@@ -1,0 +1,16 @@
+name = "Salesforce Web-to-Lead Webform Data Integration"
+description = "Integrates Salesforce Web-to-Lead Form feature with various webforms"
+package = Webform
+core = 7.x
+
+files[] = sfweb2lead_webform.install
+files[] = sfweb2lead_webform.module
+
+dependencies[] = webform
+dependencies[] = options_element
+; Information added by drupal.org packaging script on 2012-06-12
+version = "7.x-1.0-rc3"
+core = "7.x"
+project = "sfweb2lead_webform"
+datestamp = "1339536714"
+

@@ -1,0 +1,8 @@
+name = Ad2 Parent
+description = provieds parent node for ads
+package = Ad2
+
+core = 7.x
+
+dependencies[] = ad2
+dependencies[] = node_reference

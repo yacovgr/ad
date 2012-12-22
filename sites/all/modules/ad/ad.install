@@ -1,0 +1,236 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function ad_schema() {
+  $schema = array();
+
+  $schema['ad'] = array(
+    'description' => 'The base table for ads.',
+    'fields' => array(
+      'aid' => array(
+        'description' => 'The primary identifier for the ad.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'type' => array(
+        'description' => 'The type (bundle) of this ad.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'title' => array(
+        'description' => 'The title of the ad.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+       'status' => array(
+        'description' => 'Workflow status of advertisement.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'uid' => array(
+        'description' => 'ID of Drupal user creator.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp when the ad was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'changed' => array(
+        'description' => 'The Unix timestamp when the ad was most recently saved.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+       'url' => array(
+        'description' => 'The url of the ad.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'weight' => array(
+       	  'type' => 'numeric',
+          'precision' => 10,
+          'scale' => 2,
+          'not null' => FALSE,
+          'description' => 'The weight of the ad.',
+       ),
+       'size' => array(
+	   		'type' => 'varchar',
+       		 'length' => 255,
+        	'not null' => TRUE,
+        	'default' => '',
+	   ),
+	  
+    ),
+    'primary key' => array('aid'),
+    'foreign keys' => array(
+      'uid' => array('users' => 'uid'),
+    ),
+    'indexes' => array(
+      'uid' => array('uid'),
+      'type' => array('type'),
+    ),
+  );
+
+  $schema['ad_type'] = array(
+    'description' => 'Stores information about all defined contact types.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique contact type ID.',
+      ),
+      'type' => array(
+        'description' => 'The machine-readable name of this type.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+      ),
+      'label' => array(
+        'description' => 'The human-readable name of this type.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'description' => array(
+        'description' => 'A brief description of this type.',
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'medium',
+        'translatable' => TRUE,
+      ),
+    ) + entity_exportable_schema_fields(),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'type' => array('type'),
+    ),
+  );
+
+	$schema['ad_block'] = array(
+    'description' => 'Stores config of ad blocks.',
+    'fields' => array(
+      'delta' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => "The block's {block}.bid.",
+      ),
+      'info' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Block description.',
+      ),
+      
+      'quantity' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 1,
+        'description' => 'number of ads to put in the block.',
+      ),
+      'types' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'which types to show in the block.',
+      ),
+      'display' => array(
+		 'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Block dispaly method.',
+	),
+	'view_mode'=>array(
+		 'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'ads dispaly view mode.',
+	),
+	'selection' => array(
+		 'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'the select function to use',
+	),
+	 'paginator' => array(
+		 'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'type of paginator',
+	),
+	'tids'=> array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'tids comma seperated',
+	),
+	
+      'data' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'description' => 'Block contents.',
+        'translatable' => TRUE,
+      ),
+      'pager_theme' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'theme of painator.',
+      ),
+      'pager_title' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'pagination title.',
+      ),
+      
+	 'theme' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => FALSE,
+        'default' => -1,
+        'description' => 'block body theme',
+      ),
+      'pages' => array(
+    	'description' => 'how many pages to show in the pagination',
+    	'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 1,
+  	)
+      
+    ),
+    'unique keys' => array(
+      'info' => array('info'),
+    ),
+    'primary key' => array('delta'),
+  );
+	
+  return $schema;
+}
+

@@ -1,0 +1,266 @@
+<?php
+
+function ad2_import_menu(){
+	
+  $items['admin/tasks/ad2-import'] = array(
+    'title' => 'Ads Import',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array( 'ad2_import_batch_form' ),
+    //'access callback' => true, //array('administer advertisements'),
+    'access arguments' => array( 'administer ad2 types'),
+    //'file' => 'include/had.tasks.inc',
+  );
+	
+
+	return $items;
+}
+
+
+
+function ad2_import_batch_form(){
+
+	// $a = ad2_load(1830);
+	// tr( $a );
+// 	
+	// die();
+// 	
+	// $node = node_load(8437);
+// 
+// 	
+// 	
+	// $map = array(
+		// 'site_ad' 		=> 'basic',
+		// 'site_page_ad' 	=> 'site',
+		// 'site_ad_front' => 'front',
+		// 'site_click_ad' => 'click',
+		// 'site_ad_post' 	=> 'comment',
+	// );
+// 	
+	// $ad = new stdClass();
+	// $ad->type = $map[$node->type];
+// 	
+	// $ad->title 		= $node->title;
+	// $ad->uid 		= $node->uid;
+	// $ad->status 	= $node->status;
+// 
+	// $ad->field_site = $node->field_site;
+	// $ad->ad2_image 	= $node->field_ad_image;
+	// $ad->ad2_body 	= $node->field_ad_body;
+// 	
+// 	
+	// ad2_save($ad);
+// 	
+	// $aid = $ad->aid;
+	// $a = ad2_load($aid);
+	// tr( $a );
+// 	
+	// die();
+// 	
+	// //$ad->ad2_body 	= $node->field_ad_body;
+// 	
+	// tr( field_info_field('ad2_body') );
+	// tr( field_info_field('field_ad_body') );
+// 	
+	// die();
+	
+	// $q = db_select('node' , 'n');
+	// $q->fields('n' , array('nid') );
+	// //$q->condition('type' , had_get_node_types() , 'IN' );
+	// $q->condition('type' , 'site_ad'  );
+	// $q->range(16,150);
+// 
+	// $nids = $q->execute()->fetchCol();
+// 	
+	// $nodes = node_load_multiple($nids);
+	// foreach ($nodes as $node) {
+		// tr( $node->field_ad_body );
+	// }
+	
+	
+  $form['batch'] = array(
+    '#type' => 'container',
+    '#tree' => true,
+  );
+
+
+  $form['batch']['delete'] = array(
+    '#type' => 'checkboxes',
+    '#title' => 'Delete Ads',
+    '#options' => array(
+    	'all' 		=> 'delete all ads.' ,
+  	),
+  );
+
+  $form['batch']['ad'] = array(
+    '#type' => 'checkboxes',
+    '#title' => 'Ads',
+    '#options' => array(
+  		//'delete' 	=> 'delete all site_ad ads',
+    	//'create' 	=> 'create site_ad nodes for all sites' ,
+    	'import' => 'import',
+    ),
+  );
+
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Go',
+  );
+
+  return $form;
+}
+
+
+
+function ad2_import_batch_form_submit($form, &$form_state) {
+
+	$items = array();
+
+	foreach ($form_state['values']['batch'] as $k => $v  ) {
+		foreach ($v as $key => $op ) {
+			if( $op )
+				$items[] = "ad2_import_batch_" . $k . '_' . $key;
+		}
+
+	}
+//tr($items);die();
+	$operations = array();
+	foreach ($items as $function ) {
+		 $function( $operations );
+	}
+
+//tr( $operations );
+//die();
+
+	if( $items ){
+		$batch = array(
+			'operations' => $operations,
+			'finished' => 'ad2_import_batch_finished',
+			//'file' => drupal_get_path('module', 'had') . '/include/had.tasks.inc',
+		);
+
+
+		batch_set($batch);
+	} else {
+		drupal_set_message('nothing to do');
+	}
+
+}
+
+
+
+function ad2_import_batch_finished( $success, $results, $operations){
+
+	if ($success) {
+		// Here we could do something meaningful with the results.
+		// We just display the number of nodes we processed...
+
+		foreach ($results as $result) {
+//			if( is_array($result) ){
+//				$text = implode("," , $result );
+//				drupal_set_message(t('result @section "%final"', array('%final' => $text )));
+//			} else {
+				drupal_set_message(t('result "%final"', array('%final' => $result )));
+			//}
+		}
+		drupal_set_message(t('@count results processed .', array('@count' => count($results))));
+	}
+	else {
+		// An error occurred.
+		// $operations contains the operations that remained unprocessed.
+		$error_operation = reset($operations);
+		drupal_set_message(t('An error occurred while processing @operation with arguments : @args', array('@operation' => $error_operation[0], '@args' => print_r($error_operation[0], TRUE))));
+	}
+
+	drupal_set_message( l( 'דו"ח שגיאות' , 'admin/reports/dblog' , array('attributes' => array('target' => '_blank')) ));
+	//cache_clear_all();
+}
+
+
+
+function ad2_import_batch_ad_import(&$operations){
+	
+	$q = db_select('node' , 'n');
+	$q->fields('n' , array('nid') );
+	$q->condition('type' , array('site_ad' , 'stie_ad_front' , 'site_page_ad') , 'IN' );
+	//$q->condition('type' , had_get_node_types() , 'IN' );
+	//$q->range(0,100);
+
+	$nids = $q->execute()->fetchCol();
+
+	foreach ($nids as $nid ) {
+		$operations[] = array('_ad2_import_create_ad', array($nid ));
+	}
+}
+
+
+function _ad2_import_create_ad($nid ,  &$context){
+	
+	$node = node_load($nid);
+
+	$map = array(
+		'site_ad' 		=> 'basic',
+		'site_page_ad' 	=> 'site',
+		'site_ad_front' => 'front',
+		'site_click_ad' => 'click',
+		'site_ad_post' 	=> 'comment',
+	);
+	
+	$ad = new stdClass();
+	$ad->type = $map[$node->type];
+	
+	$ad->title 		= $node->title;
+	$ad->uid 		= $node->uid;
+	$ad->status 	= $node->status;
+	$ad->master 	= $node->master;
+	$ad->created 	= $node->created;
+	$ad->changed 	= $node->changed;
+
+	$ad->field_site = $node->field_site;
+	$ad->ad2_image 	= $node->field_ad_image;
+	
+	if( isset($node->field_ad_body['he']['0']) ){
+		$ad->ad2_body['und'][0] 	= $node->field_ad_body['he'][0];
+	}
+	
+	// price field
+	
+	ad2_save($ad);
+	// if( $site_nid ){
+		// $site = node_load($site_nid);
+// 
+		// $ad->field_ad_body = $site->field_teaser;
+// 
+		// try{
+			// node_save($ad);
+			// drupal_set_message("ad $ad->nid good!");
+		// } catch ( Exception $e  ) {
+			// //echo  $e->getMessage() . "<br>";
+			// drupal_set_message($e->getMessage() , 'error');
+		// }
+	// }
+}
+
+
+function ad2_import_batch_delete_all(&$operations){
+	
+	$q = db_select('ad2' , 'a');
+	$q->fields('a' , array('aid') );
+	//$q->condition('type' , had_get_node_types() , 'IN' );
+	//$q->range(16,150);
+
+	$aids = $q->execute()->fetchCol();
+
+	foreach ($aids as $aid ) {
+		$operations[] = array('_ad2_import_delete_ad', array($aid ));
+	}
+}
+
+
+function _ad2_import_delete_ad($aid ,  &$context){
+	
+	$ad = ad2_load($aid);
+	ad2_delete($ad);
+	
+}
+

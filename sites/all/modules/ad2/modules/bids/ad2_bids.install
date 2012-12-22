@@ -1,0 +1,134 @@
+<?
+// install had_bids_auto_log table
+// provide for by hour table 
+// provide for auto bids settings by roof table
+
+
+
+function ad2_bids_schema_alter(&$schema) {
+	
+	$schema['ad2']['fields']['auto'] = array(
+    	'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'does the bid automatic.',
+  );
+}
+
+function ad2_bids_install() {
+	
+	
+	db_add_field('ad2' , 'auto' , array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'does the bid automatic.',
+      ));
+	  
+	
+  	db_add_field('ad2_rank' , 'auto' , array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'does the bid automatic.',
+      ));
+	  
+	  
+	db_add_field('ad2_rank', 'bid_manual', array(
+    	'type' => 'numeric',
+	     'precision' => 5,
+	     'scale' => 2,
+	     'not null' => TRUE,
+	     'default' => 0,
+	      'unsigned' => true,
+  	));
+	
+  	db_add_field('ad2_rank' , 'auto_manual' , array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => FALSE,
+        'default' => -1,
+        'description' => 'auto manaul value -1 = none, 0 = the auto was set manualy to 0 , 1 = the auto was set manual to 1',
+      ));
+	  
+	  
+	  
+	  // bid_manual
+	  // auto_manual
+}
+
+function ad2_bids_schema() {
+ 
+  $schema['ad2_bids_auto_log'] = array(
+    'description' => 'Stores bids changes.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'description' => 'Bids ID.',
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'Ad nid.',
+      ),
+      'bid' => array(
+        'description' => 'bid For The Ad in this term.',
+	    'type' => 'numeric',
+	    'precision' => 5,
+        'scale' => 2,
+	    'default' => 0,
+	    'not null' => FALSE
+      ),
+      
+      'timestamp' => array(
+        'description' => 'The timestamp of the action.',
+        'type' => 'int',
+        'not null' => TRUE,        
+		'unsigned' => TRUE,
+        'default' => 0,
+      ),
+      'roof' => array(
+    	'description' => 'current daily roof.',
+	    'type' => 'numeric',
+	    'precision' => 8,
+        'scale' => 2,
+	    'default' => 0,
+	    'not null' => FALSE
+  	),
+  	 'done' => array(
+    	'description' => 'spending today until now.',
+	    'type' => 'numeric',
+	    'precision' => 8,
+        'scale' => 2,
+	    'default' => 0,
+	    'not null' => FALSE
+  	),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'nid' => array('nid'),
+    ),
+  );
+
+
+  return $schema;
+}
+
+function ad2_bids_uninstall(){
+	variable_del('ad2_bids_cron_last' );
+	variable_del('ad2_bids_default_last_ad2_cron_run' );
+	variable_del('ad2_autobids_table' );
+
+	db_drop_field('ad2_rank' , 'auto' );
+	db_drop_field('ad2_rank' , 'bid_manual' );
+	db_drop_field('ad2_rank' , 'auto_manual' );
+	db_drop_field('ad2' , 'auto' );
+}
+

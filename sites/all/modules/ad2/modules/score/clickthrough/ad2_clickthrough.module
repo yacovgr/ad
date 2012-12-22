@@ -1,0 +1,439 @@
+<?
+
+// if we have a table that i need to show how i got the result - in ather words show views and clicks for each ad
+
+
+function ad2_clickthrough_ad2_score_component_info(){
+		
+	return array(
+		'clickthrough' => 'אחוז הקלקה',
+	);
+}
+
+
+function ad2_clickthrough_had_score_component_calculate( &$vars ){
+	
+	$node = $vars['node'];
+	_clickthrough_had_score_get_node_data($node);
+	
+	$score = 1;
+	
+	if( $node->had['viewed'] > 300 && $node->had['clicked'] > 4 ){
+				
+		$q = 100 *  $node->had['clicked']  / $node->had['viewed'];
+		
+		$avg =  variable_get('had_avrage_click_thorugh' , 1 );
+		
+		$score = clickthrough_had_normalize_score ( ($avg - $q)  / $avg );
+		
+		if( $score > 1.5 )
+			$score = 1.5;
+			
+		if( $score < 0.5 )
+			$score = 0.5;
+			
+	} 
+	$score = round( $score , 4 );
+	
+	return $score;
+}
+
+
+function _ad2_clickthrough_had_score_get_node_data($node){
+	
+	static $stats; 
+	static $clicks; 
+					
+	 if( ! isset( $stats ) ){
+	 	$stats = array();
+		 $rows = db_select('ad_statistics' , 'ads')
+	  				->fields('ads')
+	  				//->where('action = :action' , array(':action' => 'view'))
+	  				//->expression('count', 'count + :count', array(':count' => 1))
+					//->condition('date', date('YmdH') )
+					->condition('ads.action' , array('view') , 'IN' )
+					->condition('ads.date', date('YmdH' , time() - 14*24*60*60 ) , '>=')
+					
+					//->condition('hostid', $hostid )
+					->execute()
+					;
+					
+		foreach ($rows as $row ) {
+			if( isset($stats[$row->aid])){
+				$stats[$row->aid] += $row->count;
+			} else {
+				$stats[$row->aid] = $row->count;
+			}
+		}
+		
+	 }
+	
+	if( ! isset( $clicks ) ){
+		
+		$positions = variable_get('had_position_factors' , array());
+		//tr( $positions );
+		
+		$clicks = array();
+		
+		$rows = db_select('ad_clicks' , 'adc')
+	  				->fields('adc')
+					->condition('timestamp' , time() - 14*24*60*60 , '>=')
+					->condition('status', 1)
+	  				->execute()
+					;
+					
+		foreach ($rows as $row ) {
+			
+			//if( $row->aid == 5285)
+				//tr( $row );
+			
+			if( !empty($row->extra) && is_numeric($row->extra) ){
+				if(isset($positions[$row->extra]) ){
+					$factor = $positions[$row->extra - 1];
+				} else {
+					$factor = 1;
+				}
+			} else {
+				$factor = 1;
+			}
+			//if( $row->aid == 5285)
+				//tr( $factor );
+			
+			if( isset($clicks[$row->aid])){
+				$clicks[$row->aid] = $clicks[$row->aid] + ( 1 * $factor );
+			} else {
+				$clicks[$row->aid] = 1 * $factor;
+			}
+		}
+	}
+	
+	//tr($stats);
+	//tr($clicks);
+	
+	//die();
+	
+	if( in_array( $node->type , had_get_node_types() )  ){	
+		
+		$nid = $node->nid;
+		
+		$node->had = array(
+			'viewed' => isset( $stats[$nid] ) ? $stats[$nid] :0 ,
+			'clicked' => isset( $clicks[$nid] ) ? $clicks[$nid] : 0 ,
+		);
+	}
+      
+}
+	
+function ad2_clickthrough_had_normalize_score( $s ){
+	
+	$r = 0.5 + 0.5 * ( 1- ($s / ( sqrt( $s * $s  + 0.5 ) )) );
+	
+	
+	return $r;
+	
+}
+
+// 
+// function clickthrough_cron(){
+// 	
+	// /**
+	 // * not exacly - needs to do a run over the views and makeup for the position factor
+	 // */
+// 	
+// 	
+	// // what about filter clickes ?
+// 	
+	// if (  time() - variable_get('clickthrough_cron_timestamp', 0) >= 60*60*24 ) {
+// 		
+// 		
+// 	
+		// $positions = variable_get('had_position_factors' , array());
+// 	
+		// $total_views 	= 
+			// db_query('select sum(count) from ad_statistics where action = :action and date >= :date' , 
+			// array(':action' => 'view' , ':date' => date('YmdH' , time() - 94*24*60*60 ) )) 
+			// ->fetchField();
+// 		
+		// $total_clicks = array();
+// 		
+		// $rows = db_select('ad_clicks' , 'adc')
+	  				// ->fields('adc') 
+					// ->condition('timestamp' , time() - 94*24*60*60 , '>=')
+	  				// ->execute()
+					// ;
+// 					
+		// foreach ($rows as $row ) {
+// 			
+			// $total_clicks[] = 1;
+// 			
+			// // if( !empty($row->extra) && is_numeric($row->extra) ){
+				// // if(isset($positions[$row->extra]) ){
+					// // $factor = $positions[$row->extra];
+				// // } else {
+					// // $factor = 1.5;
+				// // }
+// // 				
+			// // } else {
+				// // $factor = 1;
+			// // }
+// // 			
+			// // if( isset($clicks[$row->aid])){
+				// // $total_clicks[$row->aid] = $total_clicks[$row->aid] + ( 1 * $factor );
+			// // } else {
+				// // $total_clicks[$row->aid] = 1 * $factor;
+			// // }
+		// }
+// 		
+// 		
+		// $ration = round(  100 *  array_sum($total_clicks) / $total_views , 3 );
+// 		
+		// variable_set('had_avrage_click_thorugh' , $ration );
+// 	
+	 	// variable_set('clickthrough_cron_timestamp', time());
+// 	 
+	// }
+// }
+// 
+
+
+
+function ad2_clickthrough_ad2_cron_info(){
+	
+	$jobs['default']['info'] = 'clickthrough score component';
+	return $jobs;
+	
+}
+
+
+ 
+ 
+function ad2_clickthrough_ad2_cron_run($delta){
+	
+	$last = variable_get("clickthrough_default_last_had_cron_run" , 0 );
+	
+	if( REQUEST_TIME > $last + 24*60*60 ){
+	
+		
+		$stats 	= _clickthrough_get_ads_views();
+		$clicks = _clickthrough_get_ads_clicks();
+	
+		$types = array(
+			'site_ad',
+			//'site_click_ad',
+			'site_ad_front',
+			'site_ad_post',
+			'site_ad_page',
+		);
+	
+	
+		foreach ($types as $type) {
+			
+			$q = db_select('ads' , 'a');
+			$q->fields('a' , array('aid' ));
+			$q->condition('adstatus' , 'active');
+			$q->condition('adtype' , $type);
+			
+			$rows = $q->execute()->fetchAll();
+	
+			$avg = new stdClass;
+			$avg->clicks = 0;
+			$avg->views = 0;
+	
+			$ads = array();
+			foreach ($rows as $row ) {
+				$ads[$row->aid] = $row;
+				$ads[$row->aid]->clicks = isset($clicks[$row->aid]['factor']) ? $clicks[$row->aid]['factor'] :  0;
+				$ads[$row->aid]->clicks_raw = isset($clicks[$row->aid]['raw']) ? $clicks[$row->aid]['raw'] :  0;
+				$ads[$row->aid]->views = isset($stats[$row->aid]) && $stats[$row->aid] ? $stats[$row->aid] :  0.001;
+				$ads[$row->aid]->comp_clickthrough = 0;
+				
+				$avg->clicks += $ads[$row->aid]->clicks_raw;
+				$avg->views += $ads[$row->aid]->views;
+				
+			}
+			
+			
+			if( $avg->views == 0 ) $avg->views = 0.001;
+			
+			$avg->avg = round(100 * $avg->clicks / $avg->views , 3 );
+			
+			foreach ($ads as $aid => $ad) {
+				$score = 1;
+				if( $ad->views > 300 && $ad->clicks > 4 ){
+					$q = 100 *  $ad->clicks  / $ad->views;
+					$score = clickthrough_had_normalize_score ( ($avg->avg - $q)  / $avg->avg );
+					if( $score > 1.5 )	$score = 1.5;
+					if( $score < 0.5 )	$score = 0.5;	
+				} 
+				$score = round( $score , 4 );
+				$ads[$ad->aid]->score = $score;
+			}
+					
+			foreach ($ads as $aid => $a ) {
+				
+				db_update('ad_bids')
+					->condition('aid' , $aid )
+					->fields(array(
+						'comp_clickthrough' => $a->score,
+						'rerank'			=> 1,
+					))
+					->execute()
+					;
+			}
+			
+			
+		}
+
+		variable_set("clickthrough_default_last_had_cron_run" , REQUEST_TIME );
+	}
+
+}
+
+
+
+function _ad2_clickthrough_get_ads_views(){
+		
+	 $stats = array();
+	 $rows = db_select('ad_statistics' , 'ads')
+  				->fields('ads')
+  				->condition('ads.action' , array('view') , 'IN' )
+				->condition('ads.date', date('YmdH' , time() - 14*24*60*60 ) , '>=')
+				->execute()
+				;
+				
+	foreach ($rows as $row ) {
+		if( isset($stats[$row->aid])){
+			$stats[$row->aid] += $row->count;
+		} else {
+			$stats[$row->aid] = $row->count;
+		}
+	}
+	
+	return $stats;
+}
+
+
+function _ad2_clickthrough_get_ads_clicks( $seconds = null ){
+	
+	if( ! $seconds ){
+		$seconds = 14*24*60*60;
+	}
+	
+	$clicks = &drupal_static('_clickthrough_get_ads_clicks');
+	
+	if( ! $clicks ){
+				
+		$clicks = array();
+		$rows = db_select('ad_clicks' , 'adc')
+	  				->fields('adc')
+					->condition('timestamp' , time() - $seconds , '>=')
+					->condition('status', 1)
+	  				->execute()
+					;
+					
+		foreach ($rows as $row ) {
+			$factor = 1;
+			//if($check_positions && !empty($row->extra) && is_numeric($row->extra) && is_numeric($row->adgroup) ){
+				$factor = _clickthrough_get_factor( (int) $row->adgroup ,(int) $row->extra);
+			//} 
+			
+			if( isset($clicks[$row->aid]['factor'])){
+				$clicks[$row->aid]['factor'] += ( 1 * $factor );
+			} else {
+				$clicks[$row->aid]['factor'] = 1 * $factor;
+			}
+			
+			
+			if( isset($clicks[$row->aid]['raw'])){
+				$clicks[$row->aid]['raw'] += 1;
+			} else {
+				$clicks[$row->aid]['raw'] = 1;
+			}
+			
+			
+		}
+	}
+	
+	return $clicks;
+}
+
+// same as above but for specific time and nid;
+function _ad2_clickthrough_get_single_ad_clicks($nid ,  $seconds ){
+	
+	
+	$clicks = array();
+	$rows = db_select('ad_clicks' , 'adc')
+  				->fields('adc')
+				->condition('timestamp' , time() - $seconds , '>=')
+				->condition('status', 1)
+				->condition('aid', $nid)
+  				->execute()
+				;
+				
+	foreach ($rows as $row ) {
+		$factor = 1;
+		//if($check_positions && !empty($row->extra) && is_numeric($row->extra) && is_numeric($row->adgroup) ){
+			$factor = _clickthrough_get_factor( (int) $row->adgroup ,(int) $row->extra);
+		//} 
+		
+		if( isset($clicks['factor'])){
+			$clicks['factor'] += ( 1 * $factor );
+		} else {
+			$clicks['factor'] = 1 * $factor;
+		}
+		
+		
+		if( isset($clicks['raw'])){
+			$clicks['raw'] += 1;
+		} else {
+			$clicks['raw'] = 1;
+		}
+		
+		
+	}
+
+	return $clicks;
+}
+
+function _ad2_clickthrough_get_factor($delta , $position ){
+	
+	$blocks_positions 	= &drupal_static('_clickthrough_get_factor');
+	$blocks_factors 	= &drupal_static('_clickthrough_get_factor2');
+	
+	if( ! $blocks_factors ){
+		$q = db_select('ad_block' , 'ab');
+		$q->fields('ab' , array('delta' , 'factor'));
+		
+		$blocks_factors = $q->execute()->fetchAllKeyed();
+		
+		//tr( $blocks_factors );
+	}
+	
+	if( ! $blocks_positions ){
+		$p = db_select('ad_position' , 'a');
+		$p->fields('a' , array('position' , 'factor' , 'delta'));
+		$p->condition('type' , 'site_ad');
+		$p->orderby('delta');
+		$p->orderby('position');
+
+		$pos = $p->execute()->fetchAll();
+		
+		$blocks_positions = array();
+		foreach ($pos as $row ) {
+			$blocks_positions[$row->delta][$row->position] = $row->factor;
+		}
+		//tr( $blocks_positions );
+	}
+	
+	
+	$factor = 1;
+	
+	if( isset($blocks_positions[$delta][$position]) )
+		$factor = $blocks_positions[$delta][$position];
+	
+	if( isset($blocks_factors[$delta]))
+		$factor = $factor * $blocks_factors[$delta];
+	
+	return $factor;
+}
+

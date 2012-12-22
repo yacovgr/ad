@@ -1,0 +1,9 @@
+name = Ad Rank 
+description = "provide ranking mechanism for ads."
+core = 7.x
+package = ad2
+dependencies[] = ad2
+dependencies[] = ad2_parent
+dependencies[] = ad2_clickprice
+
+;dependencies[] = had_money

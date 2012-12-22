@@ -1,0 +1,11 @@
+name = Ad2
+description = provieds ads system
+package = Ad2
+
+core = 7.x
+
+
+dependencies[] = entity
+dependencies[] = views
+
+files[] = ad2.controller.inc

@@ -1,0 +1,130 @@
+<?
+
+define('AD2_CLICKPRICE_FIELD', 'ad2_clickprice');
+
+
+function ad2_clickprice_form_alter(&$form, &$form_state, $form_id){
+	
+	if( $form_id == 'ad2_type_form'){
+		
+		$bundles = ad2_clickprice_bundles();
+		$ad2_type =  $form_state['ad2_type'];
+		
+		$disabled = $ad2_type->type && in_array($ad2_type->type , $bundles );
+		$default_value = in_array($ad2_type->type , $bundles ) ? 1 : 0;
+		
+		$form['ad2_clickprice_enabled'] = array(
+			'#type' => 'checkbox',
+			'#title' => 'is click price enabled',
+			'#default_value' => $default_value, 
+			'#disabled' => $disabled,
+			'#description' => $disabled ? t('To Change the setting delete field !field' , array('!field' => AD2_CLICKPRICE_FIELD))  : '',
+		);
+		
+		$form['#submit'][] = 'ad2_clickprice_ad2_type_form_submit';
+		
+	}
+
+}
+
+
+function ad2_clickprice_ad2_type_form_submit( $form, &$form_state){
+	
+	$entity 	= $form_state['ad2_type'];
+	$enabled 	= $form_state['values']['ad2_clickprice_enabled'];
+	
+	if( $enabled ){
+		
+		$bundle = 	$entity->type;
+		$entity_type = 'ad2';
+	
+		$field_name = AD2_CLICKPRICE_FIELD;
+		
+		if (!field_info_field($field_name)) {
+			$field = array(
+			    'field_name' => $field_name,
+			    'type' => 'number_decimal',
+			    'entity_types' => array($entity_type),
+			    'cardinality' => 1,
+			    'translatable' => FALSE,
+			    'locked' => FALSE,
+		  	);
+	  		$field = field_create_field($field);
+	  
+		}
+  
+	  if (!field_info_instance($entity_type, $field_name, $bundle)) {
+		  $instance = array(
+		    'field_name' => $field_name,
+	    'bundle' => $bundle,
+	    'entity_type' => $entity_type,
+	    'label' => t('Ad Click Price'),
+	    //'description' => t('This is the text of all messages of this type.'),
+	    'required' => TRUE,
+	    // 'settings' => array(
+	      // 'text_processing' => 1,
+	    // ),
+		  );
+		  field_create_instance($instance);
+	  }
+  
+	}
+	
+}
+
+function ad2_clickprice_bundles(){
+	$info = field_info_field(AD2_CLICKPRICE_FIELD);
+	return $info['bundles']['ad2'];
+}
+
+function ad2_clickprice_get_default_click_price(){
+	return variable_get( 'ad2_default_click_price' , 1.2);
+}
+
+
+
+
+function ad2_clickprice_field_attach_create_bundle($entity_type, $bundle){
+		
+
+	//tr($bundle );
+	//die();
+	return;
+	
+	$type = 'ad2';
+	
+	if( $type == $entity_type ){
+		
+		$field_name = AD2_CLICKPRICE_FIELD;
+		
+		if (!field_info_field($field_name)) {
+			$field = array(
+			    'field_name' => $field_name,
+			    'type' => 'number_decimal',
+			    'entity_types' => array($entity_type),
+			    'cardinality' => 1,
+			    'translatable' => FALSE,
+			    'locked' => FALSE,
+		  	);
+	  		$field = field_create_field($field);
+	  
+		}
+  
+	  if (!field_info_instance($entity_type, $field_name, $bundle)) {
+		  $instance = array(
+		    'field_name' => $field_name,
+		    'bundle' => $bundle,
+		    'entity_type' => $entity_type,
+		    'label' => t('Ad Click Price'),
+		    //'description' => t('This is the text of all messages of this type.'),
+		    'required' => TRUE,
+		    // 'settings' => array(
+		      // 'text_processing' => 1,
+		    // ),
+		  );
+		  field_create_instance($instance);
+	  }
+  
+	
+	}
+}

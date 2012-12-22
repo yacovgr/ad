@@ -1,0 +1,77 @@
+<?
+
+function ad2_exclusive_ad2_score_component_info(){
+	
+	return array(
+		'exclusive' => 'צימר בלעדי',
+	);
+}
+
+function ad2_exclusive_ad2_cron_info(){
+	$jobs['default']['info'] = 'exclusive score component';
+	return $jobs;
+}
+
+function ad2_exclusive_ad2_cron_run($delta){
+	
+	$last = variable_get('ad2_exclusive_default_last_ad2_cron_run' , 0 );
+	
+	if( REQUEST_TIME > ( $last - 24*60*60) ){
+		
+		$nids = db_query('select nid from node where type = :type' , array(':type' => 'site'))->fetchCol();
+		$sites = node_load_multiple($nids);
+
+		$q = db_select('ad2_rank' , 'a');
+		$q->fields('a' , array('aid' , 'nid'));
+		
+		$rows = $q->execute()->fetchAll();
+		$ads = array();
+		foreach ($rows as $row) {
+			if( ! isset($ads[$row->nid]) ){
+				$ads[$row->nid] = array();
+			}
+			if( ! in_array($row->aid , $ads[$row->nid])){
+				$ads[$row->nid][] = $row->aid;
+			}
+		}
+		
+		// $q = db_select('ads' , 'a');
+		// $q->fields('a' , array('aid' , 'nid'));
+// 		
+		// $rows = $q->execute()->fetchAll();
+		// $ads = array();
+		// foreach ($rows as $row) {
+			// $ads[$row->nid][] = $row->aid;
+		// }
+		
+		foreach ($sites as $node ) {
+				
+			$nid = $node->nid;
+			
+			if( ! $node->status )
+				continue;
+			
+			if( ! isset($ads[$nid]) || ! count($ads[$nid]))
+				continue;
+			
+			$score = 0.5;
+			if( isset($node->field_exclusive['und'][0]['value']) && $node->field_exclusive['und'][0]['value'] ){
+				$score = 1.5;
+			}
+			
+			db_update('ad2_rank')
+				->condition('aid' , $ads[$nid] , 'IN')
+				->fields(array(
+					'comp_exclusive' => $score,
+					'rerank' 		=> 1,
+				))
+				->execute()
+				;
+		}
+		
+		
+		variable_set('ad2_exclusive_default_last_ad2_cron_run' , REQUEST_TIME );
+		
+	}
+	
+}

@@ -1,0 +1,67 @@
+<?
+
+
+/**
+ * Ad module database schema.
+ */
+function ad2_cron_schema() {
+ /**
+  * The ad table stores administrative information about each ad.  The
+  * actual ad itself can be found in the appropriate ad type table.
+  */
+  $schema['ad2_cron'] = array(
+    'description' => 'The ad table stores administrative information about each ad.  The actual ad itself can be found in the appropriate ad type table.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'description' => 'entry ID.',
+      ),
+      'module' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'module',
+      ),
+      'delta' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'delta',
+      ),
+      'title' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'title',
+      ),
+      'weight' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'weight for actal cron run',
+      ),
+      'status' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'Is cron job activated?',
+      ),
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+      'module' => array('module'),
+      'delta' => array('delta'),
+      'weight' => array('weight'),
+      'status' => array('status'),
+    ),
+  );
+  
+  return $schema;
+}

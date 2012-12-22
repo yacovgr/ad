@@ -1,0 +1,10 @@
+name = Ad2 Roof Week
+description = "Provides weekly planing of daily roofs."
+core = 7.x
+package = ad2
+dependencies[] = ad2_roof
+
+
+#dependencies[] = panels
+#files[] = example.test
+#configure = admin/config/content/example

@@ -1,0 +1,16 @@
+name = Ad2 bycat Scoring
+description = "allows for by category ad ranking ."
+core = 7.x
+package = ad2 scoring
+dependencies[] = ad2
+dependencies[] = ad2_score
+dependencies[] = cat_relevancy
+
+#stylesheets[all][] = had.css
+
+#dependencies[] = panels
+#files[] = example.test
+#configure = admin/config/content/example
+
+;version = "7.x-1.x-dev"
+;core = "7.x"

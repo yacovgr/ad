@@ -1,0 +1,9 @@
+name = ad2 Master ads
+description = "Automatic master ads creation"
+core = 7.x
+package = ad2
+
+dependencies[] = ad2
+;dependencies[] = had_campaign
+;dependencies[] = had_money
+;dependencies[] = had_post

@@ -1,0 +1,44 @@
+<?
+
+define('AD2_BODY_FIELD', 'ad2_body');
+
+
+function ad2_body_field_attach_create_bundle($entity_type, $bundle){
+	
+	$type = 'ad2';
+	
+	if( $type == $entity_type ){
+		
+		$field_name = AD2_BODY_FIELD;
+		
+		if (!field_info_field($field_name)) {
+			$field = array(
+			    'field_name' => $field_name,
+			    'type' => 'text_long',
+			    'entity_types' => array($entity_type),
+			    'cardinality' => 1,
+			    'translatable' => TRUE,
+			    'locked' => FALSE,
+		  	);
+	  		$field = field_create_field($field);
+	  
+		}
+  
+	  if (!field_info_instance($entity_type, $field_name, $bundle)) {
+		  $instance = array(
+		    'field_name' => $field_name,
+		    'bundle' => $bundle,
+		    'entity_type' => $entity_type,
+		    'label' => t('Ad Body'),
+		    //'description' => t('This is the text of all messages of this type.'),
+		    'required' => TRUE,
+		    'settings' => array(
+		      'text_processing' => 1,
+		    ),
+		  );
+		  field_create_instance($instance);
+	  }
+  
+	
+	}
+}

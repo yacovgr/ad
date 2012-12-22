@@ -1,0 +1,177 @@
+<?php
+
+function ad_statistic_schema(){
+	$schema['ad_statistics'] = array(
+    'description' => 'Stores ad statistics.',
+    'fields' => array(
+      'sid' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'description' => 'Statistics entry ID.',
+      ),
+      'aid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'Ad id.',
+      ),
+      'date' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'Date when action was made.',
+      ),
+      'action' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Actions: "view", "click", "enable", "disable".',
+      ),
+      'adgroup' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'Ad group.',
+      ),
+      
+      'hostid' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Host from which acion was made.',
+      ),
+      'count' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'Count of actions triggered.',
+      ),
+      'extra' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Alow add-on modules to provide additional statistics granularity.',
+      ),
+    ),
+    'primary key' => array('sid'),
+    'indexes' => array(
+      'aid_date_action' => array('aid', 'date', 'action'),
+      'date' => array('date'),
+      'action' => array('action'),
+      'adgroup' => array('adgroup'),
+      'hostid' => array('hostid'),
+      'extra' => array('extra'),
+    ),
+  );
+  
+  $schema['ad_clicks'] = array(
+    'description' => 'The ad_clicks table tracks when a given advertisement was clicked, who clicked it (uid if any and IP address), and what page they were on when they clicked it.',
+    'fields' => array(
+      'cid' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'description' => 'Statistics entry ID.',
+      ),
+      'aid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'Ad id.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => '',
+      ),
+      
+  
+      'status' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => '',
+      ),
+      'hostname' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Host from which acion was made.',
+      ),
+      'user_agent' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Clicker\'s browser agent.',
+      ),
+      'adgroup' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Ad group.',
+      ),
+      'hostid' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Host from which acion was made.',
+      ),
+      'url' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'Clicked URL.',
+      ),
+      'timestamp' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'Date when action was made.',
+      ),
+      'extra' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Alow add-on modules to provide additional statistics granularity.',
+      ),
+    ),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'aid' => array('aid'),
+      'status' => array('status'),
+      'hostname' => array('hostname'),
+      'user_agent' => array('user_agent'),
+      'adgroup' => array('adgroup'),
+      'hostid' => array('hostid'),
+      'url' => array('url'),
+      'extra' => array('extra'),
+    ),
+  );
+  
+  $schema['cache_ad'] = drupal_get_schema_unprocessed('system', 'cache');
+  $schema['cache_ad']['description'] = 'Cache table for Ads.';
+  	
+  return $schema;
+}
+
+

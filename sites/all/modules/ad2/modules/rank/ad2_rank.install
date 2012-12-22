@@ -1,0 +1,144 @@
+<?
+
+function ad2_rank_schema() {
+ 
+  $schema['ad2_rank'] = array(
+    'description' => 'Stores ad bids.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'description' => 'Bids ID.',
+      ),
+      'aid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        //'default' => 0,
+        'description' => 'Ad aid.',
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        //'default' => 0,
+        'description' => 'prant nid.',
+      ),
+      'tid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'term tid.',
+      ),
+       'status' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 1,
+        'description' => 'this bid (in category) status',
+      ),
+      'bid' => array(
+        'description' => 'bid For The Ad in this term.',
+	    'type' => 'numeric',
+	     'precision' => 5,
+	     'scale' => 2,
+	     'not null' => TRUE,
+	     'default' => 0,
+	      'unsigned' => true,
+      ),
+      // 'bid_manual' => array(
+    	// 'description' => 'manual bid.',
+	   	// 'type' => 'numeric',
+	     // 'precision' => 5,
+	     // 'scale' => 2,
+	     // 'not null' => TRUE,
+	     // 'default' => 0,
+	      // 'unsigned' => true,
+  	// ),
+      'score' => array(
+    	'description' => 'Score For The Ad.',
+	    'type' => 'numeric',
+	     'precision' => 5,
+	     'scale' => 3,
+	     'not null' => TRUE,
+	     'default' => 0,
+	      'unsigned' => true,
+  	),
+      'rank' => array(
+        'description' => 'Rank For The Ad.',
+	    'type' => 'numeric',
+	     'precision' => 8,
+	     'scale' => 4,
+	     'not null' => TRUE,
+	     'default' => 0,
+	      'unsigned' => true,
+      ),
+      // 'auto' => array(
+        // 'type' => 'int',
+        // 'not null' => TRUE,
+        // 'unsigned' => TRUE,
+        // 'default' => 0,
+        // 'description' => 'does the bid automatic.',
+      // ),
+       'rerank'  => array(
+   		'type' => 'int',
+    	'default' => 0,
+    	'not null' => TRUE,
+    	'description' => 'force calculation of rank',
+  ),
+      
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(
+    	'aid' => array('aid'),
+    	'nid' => array('nid'),
+    	'tid' => array('tid'),
+    	//'auto' => array('auto'),
+      'aid_tid' => array('aid', 'tid'),
+      'status' => array('status'),
+    ),
+    
+  );
+
+
+  return $schema;
+}
+
+
+
+// 
+// function had_bids_update_7001() {
+// 	
+// 	
+  	// db_add_field('ad_bids' , 'auto_manual' , array(
+        // 'type' => 'int',
+        // 'not null' => TRUE,
+        // 'unsigned' => FALSE,
+        // 'default' => -1,
+        // 'description' => 'auto manaul value -1 = none, 0 = the auto was set manualy to 0 , 1 = the auto was set manual to 1',
+      // ));
+// }
+// 
+// function had_bids_update_7005() {
+// 	
+	// $comps = array('budget' , 'bycat' , 'clickthrough' , 'loyalty');
+// 	
+	// foreach ($comps as $f) {
+		// db_add_field('ad_bids' , 'comp_' . $f , array(
+			// 'description' => 'compoenent ' . $f,
+       		// 'type' => 'numeric',
+			     // 'precision' => 5,
+			     // 'scale' => 3,
+			     // 'not null' => TRUE,
+	     		// 'default' => 1,
+	     		 // 'unsigned' => true,
+//         	
+      // ));
+// 	  
+	// }
+//   	
+// }
+// 
+

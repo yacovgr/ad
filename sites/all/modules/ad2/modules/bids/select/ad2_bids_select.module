@@ -1,0 +1,89 @@
+<?
+
+function ad2_bids_select_ad2_selection_info(){
+	return array(
+		'ad2_bids_select' => array(
+			'title' => 'ad2 bids select',
+		) 
+	);
+}
+
+function ad2_bids_select( &$params , $response ){
+	
+	$quantity 	= $params['quantity'];
+	$page	 	= $params['page'];
+	$types 		= $params['types'];
+	
+	$nids = array();
+
+	$query = db_select('node', 'n');
+	$query->fields('n' , array('nid'));
+	$query->condition('n.type' , 'site');
+	$query->condition('n.status' , 1);
+	
+	$nids = $query->execute()->fetchCol();
+	
+	//tr( $nids );
+	
+	// $q = db_select('ad2' , 'a');
+	// $q->fields('a' , array('aid'));
+	// if( isset($params['types']) && is_array($params['types']) && count($params['types'])){
+		// $q->condition('type' , $params['types']);
+	// }
+// 	
+	// $response->total = $q->countQuery()->execute()->fetchField();
+// 	
+	// $q->range(0,$quantity);
+	// //$q->orderRandom();
+// 	
+	// $ids = $q->execute()->fetchCol();
+	
+	
+	$q2 = db_select('ad2_rank' , 'ab');
+	$q2->fields('ab' , array('aid', 'nid' , 'rank' , 'bid' , 'tid' , 'score' ));
+	$q2->condition('ab.nid' , $nids , 'IN');
+	$q2->condition('ab.status' , 1 );
+	$q2->join('ad2' , 'a' , 'ab.aid = a.aid');
+	$q2->fields('a' , array('uid' , 'adstatus'   , 'master' , 'over'));
+	$q2->condition('a.type' , $types , 'IN' );
+	$q2->condition('a.adstatus' , 'active' );
+	$q2->join('node' , 'n' , 'ab.nid = n.nid');
+	//$q2->fields('n' );
+	$q2->condition('n.status' , 1 );
+	$q2->join('field_data_field_ispaying' , 'fdfi' , 'fdfi.entity_id = n.nid');
+
+	//if( is_array($tids) && count($tids))
+		//$q2->condition('ab.tid' , $tids , 'IN');
+
+
+	$q2->orderBy('fdfi.field_ispaying_value' , 'DESC');
+	$q2->orderBy('a.over' , 'asc');
+	$q2->orderBy('ab.rank' , 'DESC');
+	
+	$results = $q2->execute()->fetchAll();
+	
+	$ads_by_site = array();
+	foreach ($results as $r ) {
+		$ads_by_site[$r->nid][] = $r;
+	}
+			
+	//tr( count($results) );
+	//tr( count($ads_by_site) );
+	
+	$ids = array();
+	$rows = array();
+	foreach ($ads_by_site as $nid => $row ) {
+		$top = $row[0];
+		$rows[$nid] = $top;
+		$ids[] = $top->aid;
+	}
+	
+	$response->total = count( $rows );
+
+	$ids = array_slice($ids , ( $params['page'] ) * $params['quantity'] , $params['quantity'] );
+	$rows = array_slice($rows , ( $params['page'] ) * $params['quantity'] , $params['quantity'] +1 );
+	
+	$response->ad2_ids 	= $ids;
+	$response->rows 	= $rows;
+	
+}

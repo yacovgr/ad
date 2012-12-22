@@ -1,0 +1,303 @@
+<?php
+
+/**
+ * calculate once a day the quality of all ads in all tids
+ */
+ 
+function ad2_score_menu(){
+	
+  // should move to some other module
+  $items['admin/config/ad2/score-weights'] = array(
+    'title' => 'Rank Elements Weights',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad2_score_weights_settings'),
+    'access arguments' => array( 'administer advertisements'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 14,
+    'file' => 'ad2_score.admin.inc',
+  );
+	
+// 	
+  // $items["admin/reports/had/scores"] = array(
+    // 'title' => 'had scores',
+    // 'page callback' => 'has_score_ad_scroes_page',
+    // //'page arguments' => array('had_bids_batch_form' ),
+    // //'access callback' => true, // 'had_bids_access_tab',
+  	// 'access arguments' => array( 'administer advertisements'),
+   	// 'type' => MENU_LOCAL_TASK,
+  	// 'weight' => 15,
+    // 'file' => 'had_score.admin.inc',
+  // );
+//   
+  
+  
+//   
+  // $items["admin/config/had/rescores"] = array(
+    // 'title' => 'scores',
+    // 'page callback' => 'has_score_rescroes',
+    // //'page arguments' => array('had_bids_batch_form' ),
+    // //'access callback' => true, // 'had_bids_access_tab',
+  	// 'access arguments' => array( 'administer advertisements'),
+   	// 'type' => MENU_CALLBACK,
+  	// //'weight' => 15,
+   // //'file' => 'had_score.admin.inc',
+  // );
+//   
+  
+  return $items;
+}
+
+
+function ad2_score_ad2_cron_info(){
+	$jobs['rerank']['info'] = 're rank & re score';
+	return $jobs;
+}
+
+
+	
+function ad2_score_ad2_cron_run( $delta ){
+	
+	$last = variable_get('ad2_score_rerank_last_ad2_cron_run' , 0 );
+	
+	if( REQUEST_TIME > ( $last + 60 ) ){
+		
+		ad2_score_rerank();
+		variable_set('ad2_score_rerank_last_ad2_cron_run' , REQUEST_TIME );
+	
+	}
+}
+
+
+function ad2_score_rerank(){
+		
+	$weights = variable_get('ad2_score_weights' , array() );
+		
+		//tr( $weights );
+		//die();
+		
+		$exp = array();
+		$values = array();
+		foreach ($weights as $key => $w) {
+			$exp[] = '(comp_' . $key . ' * :w'.$key  . ')';
+			$values['w'.$key] = $w /100;
+		}
+		
+		$n1 = db_update('ad2_rank')
+		  ->expression('score', implode(' + ' , $exp ) , $values)
+		  ->condition('rerank', 1)
+		  ->execute()
+		  ;
+		
+		
+		$n2 = db_update('ad2_rank')
+		  ->expression('rank', 'score * bid')
+		  ->expression('rerank', 0)
+		  ->condition('rerank', 1)
+		  ->execute()
+		  ;
+		
+		
+		watchdog('ad2_score' ,  ' cron run. n1=@n1 n2=@n2' , array('@n1'=>$n1,'@n2' => $n2 ) , WATCHDOG_DEBUG );
+		
+	
+}
+
+
+// 
+// function had_score_rerank(){
+// 	
+	// $weights = variable_get('had_rank_weights' , array() );
+// 		
+		// $n1 = db_update('ad_bids')
+		  // ->expression('score', '(comp_budget * :wbudget ) + ( comp_bycat * :wbycat ) + (comp_clickthrough * :wclickthrough) + (comp_loyalty * :wloyalty ) +  (comp_exclusive * :wexclusive )' , array(
+		  	// 'wbudget' 		=> $weights['budget'] / 100,
+		  	// 'wbycat' 		=> $weights['bycat'] / 100,
+		  	// 'wclickthrough' => $weights['clickthrough'] / 100,
+		  	// 'wloyalty' 		=> $weights['loyalty'] / 100,
+		  	// 'wexclusive' 		=> $weights['exclusive'] / 100,
+		  // ))
+		  // ->condition('rerank', 1)
+		  // ->execute()
+		  // ;
+// 		
+// 		
+		// $n2 =  db_update('ad_bids')
+		  // ->expression('rank', 'score * bid')
+		  // ->expression('rerank', 0)
+		  // ->condition('rerank', 1)
+		  // ->execute()
+		  // ;
+// 		
+// 		
+		// watchdog('had_score' , 'ad bids rerank update n1=@n1 n2=@n2' , array('@n1'=>$n1,'@n2' => $n2 ) ,  WATCHDOG_DEBUG );
+// 	
+// }
+// 
+
+
+// 
+// /**
+ // * update components every day
+ // */
+// function had_score_cron(){
+// 	
+	// // maybe i need here 2 scripts 
+	// // one once a day
+	// // the other every cron run to actually set the new rank
+// 	
+// 	
+// 	
+	// // if ( (time() - variable_get('had_score_cron_timestamp', 0)) >= 24*60*60) {
+		// // _had_score_cron();
+    	// // variable_set('had_score_cron_timestamp', time());
+  // // }
+//   
+// }
+// 
+// // this can be breaked down to multiple cron runs
+// function _had_score_cron(){
+// 	
+	// // select all rows from bids
+	// // for each row calculate all comps
+	// // 
+// 	
+	// $s = db_select('node' , 'n')
+			// ->condition('type' , had_money_get_node_types() , 'IN')
+			// ->fields('n' , array('nid'))
+			// ;
+	// $nids = $s->execute()->fetchCol();
+// 	
+	// $nodes = node_load_multiple( $nids );
+	// foreach ($nodes as $aid =>  $node  ){
+		// had_score_quality($node);
+	// }
+// }
+// 
+// function has_score_rescroes(){
+// 	
+	// die('not in use at his moment');
+	// _had_score_cron();
+	// die();
+	// drupal_goto('admin/reports/had/scores');
+// }
+// /**
+ // * 
+ // * calculate the quality or score of a node in all categories
+ // * @param unknown_type $node
+ // */
+// function had_score_quality($node){
+// 	
+	// //return;
+// 	
+	// if( in_array( $node->type , had_money_get_node_types()) ){
+// 
+		// $weights = variable_get('had_rank_weights' , array() );
+// 		
+		// $rows = array();
+// 		
+		// foreach ($node->bids as $tid => $row ) {
+// 			
+			// $scores = had_score_claculate( $tid , $node);
+// 			
+			// $score = 0;
+			// foreach ($scores as $key => $s) {
+				// $rows[$tid]['comp_' . $key] = $s;
+				// $w = $weights[$key];
+				// $score += round( $s * $w /100 , 3 );
+			// }
+// 			
+			// $rows[$tid]['score'] = $score;
+// 			
+		// }
+// 			
+		// foreach ($rows as $tid => $row ) {
+			// db_update('ad_bids')
+				// ->condition('aid' , $node->nid )
+				// ->condition('tid' , $tid )
+				// ->fields($row)
+				// ->execute()
+				// ;
+		// }
+	// }
+// 	
+// }
+// 
+// 
+// 
+// /**
+ // * 
+ // * calculate the quality or score of a node in all categories
+ // * @param unknown_type $node
+ // */
+// function had_score_update_quality($node){
+// 	
+	// die(__FUNCTION__);
+	// if( in_array( $node->type , had_money_get_node_types()) ){
+// 
+		// $rows = array();
+// 		
+		// foreach ($node->bids as $tid => $row ) {
+// 			
+			// $scores = had_score_claculate( $tid , $node);
+			// $score = round(  array_sum( $scores ) , 3 );
+// 			
+			// $row->score = $score;
+			// $row->components = serialize($scores);
+// 			
+		// }
+// 				
+	// }
+// 	
+// }
+// 
+// 
+// function had_score_claculate( $tid , $node ){
+// 	
+	// $nid = $node->field_site['und'][0]['nid'];
+	// $site = node_load( $nid );
+// 		
+// 		
+	// //$modules = module_implements('had_score_component_calculate');
+	// $weights = variable_get('had_rank_weights' , array() );
+// 	
+	// $scores = array();
+// 	
+// // 	
+	// // $q = db_select('ad_bids' , 'ab');
+	// // $q->fields('ab');
+	// // $q->condition('aid' , $node->nid );
+	// // $rows = $q->execute()->fetchAll();
+// // 	
+	// // $bids = array();
+	// // foreach ($rows as $row ) {
+		// // $bids[$row->tid] = (array) $row;
+	// // }
+// // 	
+	// // $node->bids = $bids;
+// // 	
+	// $vars = array(
+		// 'node' 	=> $node,
+		// 'tid' 	=> $tid,
+		// 'site' 	=> $site,
+	// );
+// 	
+	// foreach ($weights as $module => $w ) {
+// 		
+		// $s = module_invoke($module , 'had_score_component_calculate' , $vars );
+		// //tr( "module = $module weight=" . $w . " score=" . $s );
+		// $scores[$module] = $s; // round( $s * $w /100 , 3 );
+	// }
+// 	
+	// /**
+	 // * scores alter here
+	 // * a. if over roof - then drop the rank ( site_ad )
+	 // * b. if over clicks then drop rank
+	 // */
+// 	
+// 	
+// 		
+	// return $scores;
+// }
+
+
+

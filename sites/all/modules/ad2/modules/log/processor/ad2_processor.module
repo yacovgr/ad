@@ -1,0 +1,441 @@
+<?php
+
+
+/**
+ * Implements hook_menu().
+ */
+function _ad2_processor_menu() {
+	
+//   
+  // $items['admin/reports/had-log'] = array(
+    // 'title' => 'Had Log',
+    // 'description' => 'View pages that have recently been visited.',
+    // 'page callback' => 'had_log_recent',
+    // 'access arguments' => array('access had log'),
+    // 'file' => 'had_log.admin.inc',
+  // );
+//   
+//   
+  // $items['admin/reports/had-log/%'] = array(
+    // 'title' => 'Details',
+    // 'description' => 'View access log.',
+    // 'page callback' => 'had_log_log',
+    // 'page arguments' => array(3),
+    // 'access arguments' => array('access had log'),
+    // 'file' => 'had_log.admin.inc',
+  // );
+//   
+
+  // $items['admin/config/ad2/processor'] = array(
+    // 'title' => 'ad2 log processor',
+    // //'description' => 'Control details about what and how your site logs had and nodes statistics.',
+    // 'page callback' => 'drupal_get_form',
+    // 'page arguments' => array('ad2_processor_settings_form'),
+    // 'access arguments' => array('administer ad2 log'),
+    // 'file' => 'ad2_processor.admin.inc',
+    // 'weight' => 11,
+  // );
+  
+//   
+  
+  return $items;
+}
+
+
+
+// this is main callback
+function ad2_processor_log_process(){
+
+	$rows = ad2_processor_get_rows();
+	
+	//tr( $rows );
+	//die();
+	
+	$i = 0;
+	foreach( $rows as $row ){
+		
+		ad2_proccesor_raw_expand($row);
+		
+		//tr( $row );
+		try{
+			$result = ad2_processor_row_process($row);
+			$result['done'] = 1;
+			
+			db_update('ad2_log')
+				->condition('id' , $row->id)
+				->fields($result)
+				->execute()
+				;
+			$i++;
+		} catch (exception $e ){
+			watchdog('ad2_processor' , 'error: @err' , array('@err' => $e->getMessage() ) , WATCHDOG_ERROR );
+		}
+	} 
+	
+	die();
+	
+	watchdog('ad2_processor' , 'processing done. rows = @n' , array('@n' => $i) );
+	
+	return $i;
+	
+}
+
+
+
+function ad2_processor_row_process($row){
+		
+	if( $row->is_ad ){
+		return ad2_processor_ad_process($row);
+	} else {
+		return ad2_processor_page_process($row);
+	}	
+}
+
+function ad2_processor_ad_process( $row ){
+	// determine click status - also check unique
+	// prepare click object
+	// module_invoke_all('had_click_presave' , $click ); - list how runs the hook
+	// save click object to clicks table
+	// save info to statistics table
+	// module_invoke_all('had_redirect' ,  $click ); - list who rrun the hook
+	// 
+	
+	
+	$results = array();
+	$results['filter'] = 0;
+	$results['description'] = '';
+	
+	$status = ad2_processor_click_filter_status($row);
+	
+	if( $status != CLICK_VALID  ){
+		$results['action'] = 'filtered';
+		$results['filter'] = 1;
+		$results['description'] = 'resean: ' . $status . ' ';
+	 	//return $results;
+	 }
+	
+	
+  
+  // save the click in clicks table
+  $results['description'] .= 'click added to click table.';
+  
+  
+
+	$click = (object) array(
+		//'ad'		=> $ad,
+		'aid' 		=> $row->aid,
+	  	'uid' 		=> $row->uid,
+	  	'status' 	=> $status,
+	  	'hostname' 	=> $row->hostname,
+	  	'user_agent'=> 'none', // $_SERVER['HTTP_USER_AGENT'],
+	  	'adgroup' 	=> $row->gid ? $row->gid : '',
+	  	'extra' 	=> '',
+	  	'hostid' 	=> '',//$hostid,
+	  	'url' 		=> $row->referer, //$url,
+	  	'timestamp' => $row->timestamp,
+		//'bid' 		=> $row->bid,
+	);
+	
+	
+	$batch_this = null;
+	$batch_next = null;
+	
+	if( $row->bid && $row->batch ){
+		
+		foreach ($row->batch as $n => $data ) {
+			if( $data['aid'] == $row->aid ){
+				$batch_this = $row->batch[$n];
+				$batch_this['position'] = $n;
+				$click->extra = $n+1;
+				if( isset($row->batch[$n+1])){
+					$batch_next = $row->batch[$n+1];
+					$batch_next['position'] = $n+1;
+				}
+			}
+		}
+		
+	}	
+		
+	
+	
+	$q = db_insert('ad2_clicks')
+		->fields(array(
+			  'aid' 		=> $click->aid,
+			  'uid' 		=> $click->uid,
+			  'status' 		=> $click->status,
+			  'hostname' 	=> $click->hostname,
+			  'user_agent' 	=> $click->user_agent,
+			  'adgroup' 	=> $click->adgroup,
+			  'extra' 		=> $click->extra,
+			  'hostid' 		=> $click->hostid,
+			  'url' 		=> $click->url,
+			  'timestamp' 	=> $click->timestamp,
+			))
+		->execute()
+		;
+	
+	if( $status != CLICK_VALID ){
+		return $results;
+	}
+	//watchdog('had', 'Clicked %type ad aid %aid hostid %hostid.', array('%type' => isset($adtype) ? $adtype : 'default', '%aid' => $aid, '%hostid' => $hostid));
+
+  	if ($status == CLICK_VALID ) {
+    	ad2_statistics_increment($row->aid, 'click', $click->adgroup, $click->hostid);
+  	}
+	
+	// no we charge !
+	
+	if( $row->ad->type == 'site_click_ad'){
+		
+		
+		$results['action'] 			= 'click ad';
+		$results['description'] 	= 'site_click_ad - adding click';
+		
+		$row->ad->field_clicks_left['und'][0]['value'] -= 1;
+		
+		if( $row->ad->field_clicks_left['und'][0]['value'] <= 0 ){
+			$row->ad->status = 0;
+		}
+		
+		//tr( $row->ad->field_clicks_left['und'][0]['value'] );
+		node_save($row->ad);
+		
+			
+	} 
+	
+	
+	if( in_array($row->ad->type  , had_money_get_node_types() ) ){
+		
+		//tr( $row->ad->ad );
+		
+		if( $row->ad->ad->over == 1 ){
+			$price = variable_get('had_click_chrage_minimum' , 1.05 );
+		} else {
+			if( $batch_this && $batch_next ){
+				
+				//tr( $batch_this );
+				
+				$q1 =  $batch_this['score']; 
+				$q2 =  $batch_next['score']; 
+				
+				$price = $q2 / $q1 * $batch_next['price'] + variable_get('had_chrage_extra', 0.05 );
+				
+				$min = variable_get('had_click_chrage_minimum', 1.05 );
+				
+				if( $price < $min ){
+					$price = $min;
+				}
+				
+				if( $price > $batch_this['price'] ){
+					$price = $batch_this['price'];
+				}
+				
+				//tr($batch_this );
+				//tr($price );
+					
+			} else {
+				//$price = isset( $row->ad->field_click_price['und'][0]['value'] ) ? $row->ad->field_click_price['und'][0]['value'] : had_get_default_click_price() ;
+				//$price = isset( $row->ad->ad->price ) ? $row->ad->ad->price : had_get_default_click_price() ;
+				$price = had_get_default_click_price();
+				
+				
+				//$price = isset( $ad->field_click_price['und'][0]['value'] ) ? $ad->field_click_price['und'][0]['value'] : had_get_default_click_price() ;
+				
+				
+				// if( $row->ad->ad->over == 1 ){
+					// $price = variable_get('had_click_chrage_minimum' , 1.05 );
+				// }
+			}
+			
+		}
+	
+		$price = -1 * $price;
+		
+		$balance = account_balance( $row->nid );
+		if( $balance > 0){
+			account($row->ad->ad->nid , $price , 'click' , "ad " . $row->ad->nid . " click" , null , $row->timestamp , $row->ad->nid );
+			$results['description'] 	= 'charging ad. ' . round( $price , 2 );
+		} else {
+			$results['description'] 	= 'not charging ad.' . round( $price , 2 ) .' account balance: ' . $balance ;
+		}
+		
+		$results['action'] 	= 'click';
+		
+	} 
+	
+	return $results;
+}
+
+function ad2_processor_click_filter_status( $row ) {
+	
+	return;
+	
+	if( $row->uid == 1 ){
+		return CLICK_FILTER_ROLE;
+	}
+	
+	$filter_roles = array(3,4,6,7,8,9);
+	
+	if( $row->uid ){
+		$account = user_load($row->uid);
+	} else {
+		$account = new stdClass();
+		$account->roles = array(1=>1);
+	}
+	
+	if( $row->is_ad ){
+		$intersect = array_intersect(array_keys($account->roles), $filter_roles);
+		
+		if( count($intersect) ) {
+			return CLICK_FILTER_ROLE;
+		}
+	
+		if ($row->uid) {
+		    $result = db_query("SELECT cid FROM ad2_clicks WHERE aid = :aid AND status = :status AND (uid = :uid OR hostname = :host) and timestamp >= :timestamp", 
+		    	array(':aid' => $row->aid, ':status' => CLICK_VALID , ':uid' => $row->uid , ':host' =>  $row->hostname , ':timestamp' => $row->timestamp - 3*60*60 ));
+		  }
+		  else {
+		    $result = db_query("SELECT cid FROM ad2_clicks WHERE aid = :aid AND status = :status AND hostname = :host and timestamp >= :timestamp",  
+		    	array(':aid' => $row->aid, ':status' => CLICK_VALID ,  ':host' =>  $row->hostname , ':timestamp' => $row->timestamp - 3*60*60  ) );
+		  }
+		  
+		if ( $result->rowCount() ) {
+		    return CLICK_DUPLICATE;
+		  }
+	} else {
+		
+		$intersect = array_intersect(array_keys($account->roles), $filter_roles);
+		
+		if( count($intersect) ) {
+			return CLICK_FILTER_ROLE;
+		}
+		
+		$node = db_query('select nid , type from node where nid = :nid' , array(':nid' => $row->nid) )->fetchObject();
+
+		if($node && in_array( $node->type , array('site') )){
+	
+			$rows = db_select("ad2_log" , 'a')
+				->fields('a' , array('id'))
+				->condition('a.nid' , $row->nid )
+				->condition('a.filter' , 0 )
+				->condition('a.timestamp'  , ($row->timestamp - 3*60*60), '>')
+				->condition('a.id'  , $row->id, '<')
+				//->condition('a.sid' , $row->sid )
+				->condition('a.hostname' , $row->hostname )
+				->execute()
+				->fetchAll()
+				;
+	
+			if(  count($rows) != 0 ){
+				 return CLICK_DUPLICATE;
+			} 
+		} else {
+			return 6;
+		}
+
+	}
+	
+	return CLICK_VALID;
+	
+}
+
+function ad2_processor_page_process($row){
+	// determine click status - also check unique
+	// take mony from account
+	//tr('page');
+	
+	
+	$default = 1.00;
+
+	$results = array();
+	$results['filter'] = 0;
+
+	$status = ad2_processor_click_filter_status($row);
+	
+	
+	if( $status != CLICK_VALID  ){
+		$results['action'] = 'filtered';
+		$results['filter'] = 1;
+		$results['description'] = 'resean: ' . $status;
+	 	return $results;
+	 }
+
+
+	$charge_ammount 	= $default;
+	$charge_description = 'site view';
+	
+	$balance = account_balance( $row->nid );
+	if( $balance > 0 ){
+		account( $row->nid , -1 * $charge_ammount , 'charge' , $charge_description , null , $row->timestamp );
+		$results['description'] = $charge_description . '  '  . -1 * $charge_ammount;
+	} else {
+		$results['description'] = $charge_description . ' - not done. balance: ' . $balance . ' '  . -1 * $charge_ammount;
+	}
+	
+						
+	$results['action'] = 'charge';
+	$results['filter'] = 0;
+	
+			
+	return $results;
+	
+}
+
+
+function ad2_processor_get_rows(){
+
+	$q = db_select('ad2_log' , 'al')
+		->fields('al')
+		->condition('done' , 0 )
+		->orderBy('id'  , 'asc')
+		;
+		
+	$rows = $q->execute()->fetchAll();
+	
+	return $rows;
+}
+
+
+function ad2_proccesor_raw_expand($row){
+	
+	// extract query
+	
+	$row->is_ad = false;
+	
+	if( substr($row->path , 0 , 1) == '/' ){
+		$row->path = substr($row->path , 1 );
+	}
+	$options = drupal_parse_url($row->path);
+	
+	$row->options = $options;
+	
+	if( $row->aid ){
+		
+		// here maybe i dont need the whole node just the row from ads table
+		//$a = node_load($row->aid);
+		$a = ad2_load($row->aid);
+		if( $a ){
+			//$row->aid = $aid;
+			$row->ad = $a;
+			$row->adtype = $a->type;
+			$row->is_ad = true;
+		}
+	}
+	
+	if(false && $row->bid ){
+		$row->batch = ad2_processor_batch_load($row->bid); 
+	}
+	
+}
+
+function ad2_processor_batch_load($id){
+	
+	
+	$batch = db_query('select data from ad2_batch where id = :id' , array(':id' => $id ) )->fetchField();
+  	if( $batch )
+  		$batch = unserialize( $batch );
+	
+	return $batch;
+	
+}
+ 

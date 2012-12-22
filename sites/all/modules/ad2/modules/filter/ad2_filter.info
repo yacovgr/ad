@@ -1,0 +1,5 @@
+name = Ad2 click filter
+package = ad2
+dependencies[] = ad2
+description = Filter duplicate click statistics.
+core = 7.x

@@ -1,0 +1,12 @@
+name = Tr
+description = "provide trace functonality."
+;package = "Person"
+;dependencies[] = node
+;dependencies[] = list
+;dependencies[] = options
+core = 7.x
+;version = VERSION
+files[] = tr.module
+;files[] = og.admin.inc
+;files[] = includes/og.views.inc
+;files[] = og.rules.inc

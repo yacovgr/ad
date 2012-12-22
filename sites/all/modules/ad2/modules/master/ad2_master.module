@@ -1,0 +1,334 @@
+<?php
+
+function ad2_master_form_had_campaign_form_alter(&$form, &$form_state, $form_id){
+  global $user;
+  
+  //return ;
+  //tr(array_keys($form['ads']));
+  //tr(array_keys($form['ad_master']));
+  //tr(count($form['ad_master']));
+  
+  $ad_master = array_keys($form['ad_master']);
+  
+  $money_types = had_money_get_node_types();
+	$missing = array();
+	$allowd_roles = array(
+	  3 => 3,
+	  6 => 6,
+	  8 => 8,
+	  10 => 10,
+	);
+	$master_ads_access = false;
+	foreach ($allowd_roles as $role_key){
+	  //tr($role_key);
+	  if (isset($user->roles[$role_key])){
+	    $master_ads_access = true;
+	    //tr('what the ff');
+	  }
+	}
+	
+	
+	//tr($ad_master);
+	//tr($money_types);
+	//tr($user->roles);
+	//tr($allowd_roles);
+	if ((count($ad_master) != count($money_types)) ){
+	  foreach ($money_types as $type){
+	    if (!in_array($type,$ad_master)){
+	      $missing[] = $type;
+	    }
+	  }
+	  //tr($missing);
+	  foreach ($missing as $type){
+	    $form['missing_master'][$type] = array(
+	      '#type' =>  'hidden',
+	      '#value' => $type,
+	    );
+	  }
+	   
+	  $form['missing_master_num'] = array(
+	      '#type' =>  'hidden',
+	      '#value' => count($missing),
+	    );
+	    
+	  $form['create_missing_master'] = array(
+	      '#type' => 'button',
+	      '#value' => t('צור מודעות'),
+	      '#prefix' => '<br><b>מודעות מערכת חסרות :</b> ',
+	      '#access' => $master_ads_access,
+				'#ajax' => array(
+    			 'callback' => 'ad2_master_add_ads',
+    			 'method' => 'replace',
+    			 
+	      ),
+	  );
+	}
+  
+}
+
+function ad2_master_add_ads( $form,$form_state){
+  //tr($form['missing_master'][0]['#value']);
+  //tr($form['#node']);
+  //tr($form['missing_master_num']['#value']);
+  $nid = $form['#node']->nid;
+  
+  //tr($form['missing_master_num']['#value']);
+  
+//  for ($i=0;$i < $form['missing_master_num']['#value'];$i++){
+//    tr($form['missing_master'][$i],1);
+//    had_master_ads_create_system_ad($nid , $form['missing_master'][$i]['#value']  );       
+//  }
+
+  
+  foreach ($form['missing_master'] as $key ){
+    //tr($key);
+    if (isset($key['#type']) && $key['#type'] == 'hidden'){
+      //tr($key['#value'] .'//');
+      ad2_master_create_system_ad($nid , $key['#value']  ); 
+    }
+    
+    
+  }
+  //die();
+  
+  $commands[] = ajax_command_alert('המודעות נוצרו');
+  ctools_include('ajax');
+  ctools_add_js('ajax-responder');
+  $commands[] = ctools_ajax_command_redirect('node/'.$nid.'/had');
+  //$commands[] = ctools_ajax_command_reload();
+  return array('#type' => 'ajax', '#commands' => $commands);
+  
+}
+
+
+function ad2_master_create_system_ad($nid , $type ){
+$node = node_load($nid);
+
+	$ad = new stdClass();
+	$ad->type 		= $type;
+	$ad->uid 		= $node->uid;
+	$ad->status 	= 1;//, $node->status;
+	$ad->language 	= 'he';
+	//$ad->redirect_url = "/node/" . $nid;
+	$ad->master 	= 1;
+
+	$ad->field_site['und'][0]['nid'] = $node->nid;
+	
+
+
+	switch ($type) {
+		case 'site_ad_post':
+
+			$comment_cid = had_master_ads_get_comment($node->nid);
+
+			/**
+			 * create only for sites that have comments - if dont have comment - dont create
+			 */
+			if( ! $comment_cid ){
+				continue;
+			}
+
+
+			
+			$ad->title = 'מודעת מערכת'; 
+			$ad->title_field['he'][0]['value'] = 'מודעת מערכת'; 
+			$ad->title_field['en'][0]['value'] = 'system ad';
+
+			$ad->field_ad_body = $node->field_teaser;
+
+
+			//$ad->field_click_price['und'][0]['value'] = had_get_default_click_price();
+
+			if( isset( $node->field_image['und'][0]['fid']) &&   $node->field_image['und'][0]['fid']){
+				$ad->field_ad_image['und'][0]['fid'] = $node->field_image['und'][0]['fid'];
+			}
+
+			$ad->field_comment_cid['und'][0]['value'] = $comment_cid;
+
+			node_save($ad);
+
+
+			$time = time();
+	 		$t = array(
+	 			'entity_type' 	=> 'node',
+	 			'entity_id'		=> $ad->nid,
+	 			'language'		=> 'en',
+	 			'source'		=> 'he',
+	 			'uid'			=> $ad->uid,
+		 		'status'		=> $ad->status,
+		 		'translate'		=> 0,
+		 		'created'		=> $time,
+		 		'changed'		=> $time,
+	 		);
+
+	 		$return_value = db_insert('entity_translation')
+	                    ->fields($t)
+	                    ->execute();
+						
+
+			break;
+
+		case 'site_ad_front':
+
+			
+			$ad->title = 'מודעת מערכת'; 
+			$ad->title_field['he'][0]['value'] = 'מודעת מערכת'; 
+			$ad->title_field['en'][0]['value'] = 'system ad';
+			
+			
+			$ad->field_ad_body = $node->field_teaser;
+
+			//$ad->ad->price = had_get_default_click_price();
+			//$ad->field_click_price['und'][0]['value'] = had_get_default_click_price();
+
+			if( isset( $node->field_image['und'][0]['fid']) &&   $node->field_image['und'][0]['fid']){
+				$ad->field_ad_image['und'][0]['fid'] = $node->field_image['und'][0]['fid'];
+			}
+
+			node_save($ad);
+		
+			
+			$time = time();
+	 		$t = array(
+	 			'entity_type' 	=> 'node',
+	 			'entity_id'		=> $ad->nid,
+	 			'language'		=> 'en',
+	 			'source'		=> 'he',
+	 			'uid'			=> $ad->uid,
+		 		'status'		=> $ad->status,
+		 		'translate'		=> 0,
+		 		'created'		=> $time,
+		 		'changed'		=> $time,
+	 		);
+
+	 		$return_value = db_insert('entity_translation')
+	                    ->fields($t)
+	                    ->execute();
+						
+
+			break;
+
+		case 'site_ad':
+		case 'site_page_ad':
+
+			
+			$ad->title = 'מודעת מערכת'; 
+			$ad->title_field['he'][0]['value'] = 'מודעת מערכת'; 
+			$ad->title_field['en'][0]['value'] = 'system ad';
+			
+			
+			$ad->field_ad_body = $node->field_teaser;
+
+
+			//$ad->field_click_price['und'][0]['value'] = had_get_default_click_price();
+
+			if( isset( $node->field_image['und'][0]['fid']) &&   $node->field_image['und'][0]['fid']){
+				$ad->field_ad_image['und'][0]['fid'] = $node->field_image['und'][0]['fid'];
+			}
+
+			node_save($ad);
+
+			
+			$time = time();
+	 		$t = array(
+	 			'entity_type' 	=> 'node',
+	 			'entity_id'		=> $ad->nid,
+	 			'language'		=> 'en',
+	 			'source'		=> 'he',
+	 			'uid'			=> $ad->uid,
+		 		'status'		=> $ad->status,
+		 		'translate'		=> 0,
+		 		'created'		=> $time,
+		 		'changed'		=> $time,
+	 		);
+
+	 		$return_value = db_insert('entity_translation')
+	                    ->fields($t)
+	                    ->execute();
+						
+			
+			
+			break;
+
+
+		case 'site_click_ad':
+
+			$ad->title = 'מודעת מערכת'; 
+			$ad->title_field['he'][0]['value'] = 'מודעת מערכת'; 
+			$ad->title_field['en'][0]['value'] = 'system ad'; // 'פרסומת לצימר ' . isset($node->title_field['en'][0]['value'] ) ? $node->title_field['en'][0]['value'] : $nid;
+
+
+
+			$ad->field_ad_body = $node->field_teaser;
+
+			$ad->field_clicks_left['und'][0]['value'] = 10000;
+
+			if( isset( $node->field_image['und'][0]['fid']) &&   $node->field_image['und'][0]['fid']){
+				$ad->field_ad_image['und'][0]['fid'] = $node->field_image['und'][0]['fid'];
+			}
+
+			node_save($ad);
+
+			$time = time();
+	 		$t = array(
+	 			'entity_type' 	=> 'node',
+	 			'entity_id'		=> $ad->nid,
+	 			'language'		=> 'en',
+	 			'source'		=> 'he',
+	 			'uid'			=> $ad->uid,
+		 		'status'		=> $ad->status,
+		 		'translate'		=> 0,
+		 		'created'		=> $time,
+		 		'changed'		=> $time,
+	 		);
+
+	 		$return_value = db_insert('entity_translation')
+	                    ->fields($t)
+	                    ->execute();
+						
+							
+			break;
+
+
+		default:
+
+			break;
+	}
+
+
+	
+}
+
+function ad2_master_get_comment($nid , $score = null ){
+
+	$query = db_select('comment', 'c');
+
+	$query
+	  ->condition('c.status', 1, '=')
+	  ->fields('c', array('cid'))
+	  ->join('node' , 'n' , 'c.nid = n.nid')
+	  ;
+
+	if( $score ){
+		$query->join('field_data_field_scores' , 'fs' , 'fs.entity_id = c.cid');
+		$query->condition('fs.entity_type', 'comment');
+		$query->condition('fs.bundle', 'comment_node_site');
+		$query->condition('fs.deleted', 0 );
+		$query->condition('fs.delta', 0 );
+		$query->condition('fs.language', 'und' );
+		$query->condition('fs.field_scores_score', $score , '>' );
+	}
+
+	$query->orderBy('c.created', 'DESC');
+	$query->range(0, 1);
+
+	$query->condition('c.nid' , $nid );
+	$result = $query->execute()->fetchObject();
+
+	if( $result ){
+		return $result->cid;
+	} else {
+		return 0;
+	}
+
+}

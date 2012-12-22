@@ -1,0 +1,56 @@
+<?php
+
+function ad2_parent_install(){
+	
+	
+	$field_name = AD2_SITE_FIELD;
+  
+  	$entity_type = 'ad2';
+  
+	foreach (ad2_types() as $benefit_type_key => $benefit_type) {
+		
+		if (!field_info_instance($entity_type, $field_name, $benefit_type_key)) {
+	    $instance = array(
+	      'field_name' => $field_name,
+	      'bundle' => $benefit_type_key,
+	      'entity_type' => $entity_type,
+	      'label' => t('Site'),
+	      //'description' => t('This is the text a user may send to the group administrators.'),
+	      'required' => TRUE,
+	    );
+	    field_create_instance($instance);
+	  }
+  
+	}
+}
+// 
+// function ad2_parent_install() {
+//  
+// 
+	// $spec = array(
+		// 'description' => 'nid of parent node',
+        // 'type' => 'int',
+        // 'unsigned' => TRUE,
+        // 'not null' => FALSE,
+        // 'default' => NULL,
+	// );
+// 	
+	// db_add_field('ad2', 'nid', $spec , $keys_new = array('nid') );
+// }
+// 
+// 
+// function ad2_parent_uninstall() {
+ 	// db_drop_field('ad2', 'nid');
+// }
+// 
+// 
+// function ad2_parent_schema_alter(&$schema) {
+  // // Add field to existing schema.
+  // $schema['ad2']['fields']['nid'] = array(
+    // 'description' => 'nid of parent node',
+        // 'type' => 'int',
+        // 'unsigned' => TRUE,
+        // 'not null' => FALSE,
+        // 'default' => NULL,
+  // );
+// }

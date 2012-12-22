@@ -1,0 +1,139 @@
+<?
+
+
+function ad2_roof_schema_alter(&$schema) {
+	
+	$schema['ad2']['fields']['over'] = array(
+    'description' => 'is ad over daily roof',
+    	'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+  );
+  
+  
+	
+	$schema['ad2']['fields']['adstatus'] = array(
+    'description' => 'is ad over daily roof',
+    	'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => 'active',
+        'description' => 'Ad status',
+  );
+  
+  
+}
+
+
+function ad2_roof_schema() {
+	
+	
+	$schema['ad2_roof'] = array(
+    'description' => 'The ad_roof table stores the daily roof information for each zimmer.',
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+        'description' => 'Unique node of type site ID.',
+      ),
+      'roof' => array(
+	    'description' => 'miminum roof ammount for site.',
+	    'type' => 'float',
+	    'default' => 0,
+	   'not null' => TRUE,
+	    'size' => 'normal',
+	  ),
+	  // 'over' => array(
+    	// 'description' => 'is ad over daily roof',
+    	// 'type' => 'int',
+        // 'not null' => TRUE,
+        // 'unsigned' => TRUE,
+        // 'default' => 0,
+  		// ),
+	   'auto' => array(
+    	'description' => 'is daily roof is automatic',
+    	'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 1,
+  		)  
+    ),
+    'primary key' => array('nid'),
+    'indexes' => array(),
+  );
+	
+	
+	return $schema;
+}
+
+
+function ad2_roof_install(){
+	
+	db_add_field('ad2' , 'over' ,  array(
+    	'description' => 'is ad over daily roof',
+    	'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+  	));
+	
+	
+	db_add_field('ad2' , 'adstatus' ,  array(
+    	 'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => 'active',
+        'description' => 'Ad status',
+  	) );
+	
+	
+	$q = db_select('node' , 'n');
+	$q->fields('n' , array('nid'));
+	$q->condition('n.type' , 'site');
+	
+	$nids = $q->execute()->fetchCol();
+	foreach ( $nids as $nid ) {
+		
+		db_insert('ad2_roof')
+			->fields(array(
+				'nid' 	=> $nid,
+				'roof'	=> 10,
+				'auto' 	=> 1,
+			))
+			->execute()
+			;
+	}
+	
+	
+	
+	$q = db_select('ad2' , 'a');
+	$q->fields('a' , array('aid' , 'status'));
+	$ads = $q->execute()->fetchAll();
+	
+	foreach ( $ads as $ad ) {
+		
+		db_update('ad2')
+			->fields(array(
+				'adstatus' 	=> $ad->status ? 'active' : 'expired',
+			))
+			->condition('aid' , $ad->aid)
+			->execute()
+			;
+	}
+	
+}
+
+function ad2_roof_uninstall(){
+	// populate the table
+	
+	db_drop_field('ad2' , 'over');
+	db_drop_field('ad2' , 'adstatus');
+	
+	//variables : 
+	variable_del('ad2_roof_cron_date');
+	variable_del('ad2_roof_min_default');
+	
+}

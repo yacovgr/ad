@@ -1,0 +1,48 @@
+<?
+
+function ad2_roof_week_install(){
+	
+	$week = array(
+		'sunday',
+		'monday',
+		'tuesday',
+		'wednesday',
+		'thursday',
+		'friday',
+		'saturday',
+	);
+	
+	foreach ($week as $day ) {
+		db_add_field('ad2_roof', $day, array(
+	    	'description' => 'roof for ' . $day,
+	    	'type' => 'float',
+		    'default' => 0,
+		   'not null' => TRUE,
+		    'size' => 'normal',
+	  	));
+	}
+	
+}
+
+function ad2_roof_week_uninstall(){
+	// populate the table
+	
+	//variables : 
+	variable_del('ad2_roof_cron_date');
+	variable_del('ad2_roof_min_default');
+	
+	$week = array(
+		'sunday',
+		'monday',
+		'tuesday',
+		'wednesday',
+		'thursday',
+		'friday',
+		'saturday',
+	);
+	
+	foreach ($week as $day ) {
+		db_drop_field('ad2_roof', $day);
+	}
+	
+}

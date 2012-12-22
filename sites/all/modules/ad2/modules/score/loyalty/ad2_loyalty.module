@@ -1,0 +1,182 @@
+<?
+
+function ad2_loyalty_ad2_score_component_info(){
+	
+	return array(
+		'loyalty' => 'מידת הנאמנות של הצימר',
+	);
+}
+
+
+/**
+ * 0 - should give 0.5
+ * 1 - should give 1 
+ * 9 - should give 1.5
+ *
+ * @param unknown_type $s
+ * @return unknown
+ */
+function ad2_loyalty_normalize_score( $s ){
+	
+	if( $s == 1 ){
+		return 0.5;
+	} else {
+		$r = 0.5 * ( 1- ($s / ( sqrt( $s * $s  + 0.5 ) )) ) + 0.5;
+	}
+	
+	return $r;
+	
+}
+
+
+
+function ad2_loyalty_ad2_cron_info(){
+	$jobs['default']['info'] = 'loyalty score component';
+	return $jobs;
+}
+
+function ad2_loyalty_ad2_cron_run($delta){
+	
+	$last = variable_get('ad2_loyalty_default_last_ad2_cron_run' , 0 );
+	
+	if( REQUEST_TIME > ( $last - 2*24*60*60) ){
+		$days_back = 94;
+			
+		$rows = db_query("select  sum(ammount) as total, nid from account where action in (:action) and time > :time  group by nid order by nid" , array(':action' => array('deposite' , 'deal') , ':time' => time() - $days_back * 24*60*60 ))->fetchAll();
+		
+		foreach ($rows as $row) {
+			$loyalty_sites[$row->nid] = $row->total;
+		}
+		$loyalty_sites_avg_all = (is_array($loyalty_sites) && count($loyalty_sites) > 1 ) ?   array_sum($loyalty_sites) / count($loyalty_sites) : 1000 ;
+		
+		
+		// $q = db_select('ads' , 'a');
+		// $q->fields('a' , array('aid' , 'nid'));
+// 		
+		// $rows = $q->execute()->fetchAll();
+		// $ads = array();
+		// foreach ($rows as $row) {
+			// $ads[$row->nid][] = $row->aid;
+		// }
+// 		
+		
+		$q = db_select('ad2_rank' , 'a');
+		$q->fields('a' , array('aid' , 'nid'));
+		
+		$rows = $q->execute()->fetchAll();
+		$ads = array();
+		foreach ($rows as $row) {
+			if( ! isset($ads[$row->nid]) ){
+				$ads[$row->nid] = array();
+			}
+			if( ! in_array($row->aid , $ads[$row->nid])){
+				$ads[$row->nid][] = $row->aid;
+			}
+		}
+		
+		foreach ($loyalty_sites as $nid => $total ) {
+			$score = ad2_loyalty_normalize_score( ($loyalty_sites_avg_all - $total  )/$loyalty_sites_avg_all );
+			$score = round( $score , 4 );
+			
+			if( ! isset($loyalty_sites[$nid]))
+				continue;
+			
+			if( ! isset($ads[$nid]) || ! count($ads[$nid]))
+				continue;
+			
+			
+			db_update('ad2_rank')
+				->condition('aid' , $ads[$nid] , 'IN')
+				->fields(array(
+					'comp_loyalty' => $score,
+					'rerank' 		=> 1,
+				))
+				->execute()
+				;
+		}
+		
+		
+		variable_set('ad2_loyalty_default_last_ad2_cron_run' , REQUEST_TIME );
+		
+	}
+	
+}
+
+
+// 
+// function ad2_loyalty_ad2_score_component_calculate( &$vars  ){
+// 	
+	// static $loyalty_sites;
+	// static $loyalty_sites_avg_all;
+// 	
+	// $node = $vars['node'];
+// 	
+	// if( ! $loyalty_sites ){
+// 		
+		// $days_back = 94;
+// 		
+		// $rows = db_query("select  sum(ammount) as total, nid from account where action in (:action) and time > :time  group by nid order by nid" , array(':action' => array('deposite' , 'deal') , ':time' => time() - $days_back * 24*60*60 ))->fetchAll();
+// 		
+// 		
+// 		
+		// foreach ($rows as $row) {
+			// // if( $row->nid == 349){
+				// // tr( $row );
+			// // }
+			// $loyalty_sites[$row->nid] = $row->total;
+		// }
+// 		
+		// $loyalty_sites_avg_all = (is_array($loyalty_sites) && count($loyalty_sites) > 1 ) ?   array_sum($loyalty_sites) / count($loyalty_sites) : 1000 ;
+// 		
+		// //tr(   $loyalty_sites );
+		// //tr( 'avg =' .  $loyalty_sites_avg_all );
+		// //die();
+	// }
+// 	
+// 	
+	// $nid = $node->field_site['und'][0]['nid'];
+	// $avg = isset( $loyalty_sites[$nid] ) ? $loyalty_sites[$nid] : 0;
+// 	
+	// //tr( $loyalty_sites );
+	// //tr( $avg_all );
+	// //echo  "nid=$nid " . ( $avg / $avg_all) . "<br>";
+// 	
+// //	$a = ($avg_all - $avg )/$avg_all ;
+// //	$a2 = loyalty_had_normalize_score(  ($avg_all - $avg  )/$avg_all    );
+// //	tr( "nid=$nid avg=$avg  s=$a s2=$a2" );
+// 	
+	// //die();
+	 // // : 3500*4 ;
+	// //$max = $max == 0 ?  3500*4 : $max;
+// 	
+	// $score = loyalty_had_normalize_score( ($loyalty_sites_avg_all - $avg  )/$loyalty_sites_avg_all );
+	// $score = round( $score , 4 );
+// 	 
+	// // tr($nid . ' score=' . $score );
+// 	 
+	// return $score;
+// }
+
+//
+//function _loyalty_get_charge_sum( $nid ){
+//	
+//	//tr( $nid );
+//	
+//	static $loyalty_sites;
+//	//tr("ls=" . $loyalty_sites );
+//	if( ! $loyalty_sites ){
+//		
+//		$days_back = 94;
+//		
+//		$rows = db_query("select sum(ammount) as total, nid from account where action in (:action) and time > :time  group by nid order by nid" , array(':action' => array('charge' , 'deal') , ':time' => time() - $days_back * 24*60*60 ))->fetchAll();
+//		
+//		//tr( $rows );
+//		foreach ($rows as $row) {
+//			$loyalty_sites[$row->nid] = $row->total;
+//		}
+//	}
+//	
+//	//tr( $loyalty_sites );
+//	return isset( $loyalty_sites[$nid] ) ? $loyalty_sites[$nid] : 0;
+//	
+//}

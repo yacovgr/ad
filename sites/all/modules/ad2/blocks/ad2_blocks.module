@@ -1,0 +1,320 @@
+<?php
+
+function ad2_blocks_menu(){
+	
+	
+  $items['admin/structure/block/add-ad2-block'] = array(
+    'title' => 'Add Ads Block',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad2_add_block_form'),
+    'access arguments' => array( 'administer blocks'),
+    'type' => MENU_CALLBACK,
+    'file' => 'ad2_blocks.admin.inc',
+  );
+
+	
+  $items['admin/config/ad2/blocks'] = array(
+    'title' => 'Ads Blocks',
+    'page callback' => 'ad2_page_blocks',
+    //'page arguments' => array('ads_config_form'),
+    'access arguments' => array( 'administer advertisements'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+    'file' => 'ad2_blocks.admin.inc',
+  );
+	
+	
+	return $items ;
+}
+
+function ad2_blocks_block_info(){
+
+	$blocks = array();
+
+	$result = db_query('SELECT delta, info FROM ad2_blocks ORDER BY info'); 
+  	foreach ($result as $block) {
+	    $blocks[$block->delta]['info'] = t('Ads Module') . ': ' . $block->info;
+	    
+	    // Not worth caching. maybe it is worth caching
+	    $blocks[$block->delta]['cache'] = DRUPAL_NO_CACHE;
+  	}
+	return $blocks;
+
+}
+
+function ad2_blocks_block_view($delta = ''){
+
+	$block = ad2_blocks_get_block( $delta );
+	//tr($block);
+	drupal_alter('ad2_blocks_params' , $block);
+	
+	//tr( $block );
+	$view_mode = $block->view_mode;
+	
+	$qp = array(
+		'quantity' 	=> $block->quantity,
+		'group' 	=> $block->delta,
+		'types'		=> explode(',',$block->types ),
+		'function'	=> $block->selection,
+	);
+	
+	$response = new stdClass();
+	$response->ad2_ids 	= array();
+	$response->total 	= 0;
+	
+  	//tr( $qp );
+	
+	$ads = ad2($qp , $response );
+	
+	//tr( $response );
+	
+	// $ad2_nids = &drupal_static('ad2_nids' , array());
+	// foreach ($ads as $ad ) {
+		// if( $ad->nid)
+			// $ad2_nids[$delta][] = $ad->nid;
+	// }
+	
+	
+	//tr( $ads );
+	
+	$content['ads'] = entity_view('ad2', $ads, $view_mode );
+	$content['pagination'] = array(
+		'#markup' => 'pagination here',
+	);
+	
+	$return['content'] = $content;
+	
+
+	return $return;
+}
+
+
+/**
+ * implements hook_ad2_selection_alter
+ */
+function ad2_blocks_ad2_selection_alter($ads , $params , $response ){
+
+	$group = $params['group'];
+	foreach ($ads as $ad) {
+		$ad->block_id = $group;
+	}
+
+}
+
+function ad2_block_build_content($block){
+	
+	return;
+	
+	had_blocks_select_nodes($block);
+	$block->content = array(
+		'nodes' => node_view_multiple($block->nodes, $block->view_mode, 0),
+		'pagination' => had_blocks_build_pagination($block),
+	);
+	
+}
+
+
+
+function ad2_blocks_block_configure($delta = ''){
+
+	
+	
+	if ($delta) {
+    	$custom_block = ad2_blocks_get_block($delta);
+  	} else {
+    	$custom_block = array();
+  	}
+
+	//tr( $custom_block );
+
+	/**
+	 * if delta = 0 then it means the block in being created
+	 */
+
+	$form = array();
+
+	$form['ad2_info'] = array(
+		'#type' => 'textfield',
+		'#title' => 'כותרת בדף בלוקים',
+		'#required' => true,
+		//'#default_value' => isset($custom_block['info']) ? $custom_block['info'] : '',
+		'#default_value' => isset($custom_block->info) ? $custom_block->info : '',
+	);
+
+	$form['ad2_quantity'] = array(
+		'#type' => 'select',
+		'#title' => 'מספר המודעות להציג',
+		'#default_value' => isset($custom_block->quantity) ? $custom_block->quantity : 2, // variable_get( "ad_block_{$delta}_ads_number" , 10),
+		'#options' => drupal_map_assoc(array(1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25, 30)),
+	);
+
+    // Provide hook for ad_display_TYPE modules to set display TYPE.
+  	// $display_options = array( /*'jquery' => t('jQuery'), */ 'raw' => t('Raw') ,/* 'iframe' => t('IFrame') */ );
+	// $form['had_display'] = array(
+		// '#type' => 'radios',
+		// '#title' => 'שיטת תצוגת הבלוק',
+		// '#default_value' => isset($custom_block['display']) ? $custom_block['display'] : 'jquery', //variable_get("ad_block_{$delta}_ads_display", 'jquery'),
+		// '#options' => $display_options,
+		// '#description' => t('This setting configures the default method for displaying advertisements on your website.  It is possible to override this setting when making direct calls to ad(), as described in the documentation.  Using the JavaScript, jQuery, and IFrame display methods allows you to display random ads and track impressions even on cached pages.  When using the Raw display method together with Drupal\'s page cache, impressions will be properly tracked but advertisements will only change when the page cache is updated.'),
+	// );
+
+
+	$form['ad2_view_mode'] = array(
+		'#type' => 'radios',
+		'#title' => t('View Mode'),
+		'#default_value' =>isset($custom_block->view_mode) ? $custom_block->view_mode : 'teaser',// variable_get("ad_block_{$delta}_ads_view_mode", 'teaser'),
+		'#options' => had_get_view_mode_options(),
+		//'#description' => $description,
+	);
+
+	$options = array();
+
+	//$names = node_type_get_names();
+	foreach ( ad2_types() as $key => $type ) {
+		//tr( $key );
+		//tr( $name );
+		//$options[$key] = $name;
+		$options[$key] = $type->label;
+		//get_class_methods($type);
+	}
+
+	//die();
+	
+	$form['ad2_types'] = array(
+		'#type' => 'checkboxes',
+		'#title' => 'סוגי מודעות',
+		'#default_value' => isset($custom_block->types) ? explode(',',$custom_block->types) : array(), // variable_get("ad_block_{$delta}_ads_type", array()),
+		'#options' => $options,
+		'#description' => 'here decription',
+	);
+
+	$pagination_options = array(
+		'none' => 'ללא',
+		'mini' => 'דפדוף מינימלי',
+	);
+
+	$form['ad2_paginator'] = array(
+		'#type' => 'radios',
+		'#title' => 'דפדוף',
+		'#options' => $pagination_options,
+		'#default_value' => isset($custom_block->paginator) ? $custom_block->paginator : 'none', // variable_get("ad_block_{$delta}_ads_paginator", 'none'),
+	);
+
+	$selection_options = array();
+
+	$modules = module_implements('ad2_selection_info');
+	//tr( $modules );
+
+	foreach ( $modules as $module ){
+		$options = module_invoke($module,'ad2_selection_info');
+		foreach ($options as $key => $info ) {
+			$selection_options[$key] = $info['title'];
+		}
+	}
+	//tr( $selection_options );
+
+	$form['ad2_selection'] = array(
+		'#type' => 'radios',
+		'#title' => 'פונקצית בחירת המודעות',
+		'#options' => $selection_options ,
+		'#default_value' => isset($custom_block->selection) ? $custom_block->selection : null, // variable_get("ad_block_{$delta}_ads_selection", 'ads'),
+	);
+	/**
+	 * here is extention point
+	 */
+
+
+  $form['ad2_taxonomy'] = array(
+  	'#type' => 'fieldset',
+  	'#title' => 'קטגוריות',
+  	'#collapsible' => true,
+  	'#collapsed' => true,
+  );
+
+  $terms = array();
+  $tree = taxonomy_get_tree(1);
+  foreach ($tree as $t ){
+  	$terms[$t->tid] = str_repeat('-', $t->depth) . $t->name;
+  }
+
+  $form['ad2_taxonomy']['ad2_tids'] = array(
+  	'#type' => 'checkboxes',
+  	'#title' => 'קטגוריות',
+  	'#options' => $terms,
+  	//'#default_value' => isset($custom_block['tids']) ? explode(',',$custom_block['tids']) : array(),
+  );
+
+
+	return $form;
+}
+
+
+function ad2_blocks_get_block($delta){
+	// this should be loaded once
+	$custom_block = db_query("SELECT * FROM ad2_blocks WHERE delta = :delta", array(':delta' => $delta))->fetchObject(); //->fetchAssoc();
+	return $custom_block;
+}
+
+
+function ad2_blocks_block_save($delta = '', $edit = array()) {
+
+	$fields = array();
+
+	foreach ($edit as $k => $v ) {
+		if( substr($k, 0 , 4) == 'ad2_' ){
+			$key = substr($k, 4);
+			$fields[$key] = $v;
+		}
+	}
+
+	$types = array();
+	foreach ($fields['types'] as $k => $v ) {
+		if( $v )
+			$types[] = $k;
+	}
+	$fields['types'] = implode(',',$types);
+
+	$tids = array();
+	foreach ($fields['tids'] as $k => $v ) {
+		if( $v )
+			$tids[] = $k;
+	}
+	sort($tids);
+	$fields['tids'] = implode(',',$tids);
+
+	db_update('ad2_blocks')
+	    ->fields($fields)
+	    ->condition('delta', $delta)
+	    ->execute();
+
+}
+
+
+
+function ad2_blocks_select( &$params ){
+	 
+	drupal_alter('had_blocks_pre_select' , $params );
+	
+	$selection = $params['selection'] ? $params['selection'] : 'had_select_default' ;
+	
+	$nids = $selection( $params );
+	$params['nids'] = $nids;
+	
+	drupal_alter('had_blocks_post_select' , $params );
+	
+}
+
+
+
+function ad2_blocks_preprocess_entity(&$vars, $hook){
+	
+	if( $vars['entity_type'] == 'ad2' && $vars['view_mode'] != 'full' ){
+			
+		$ad = $vars['ad2'];
+		
+		if( isset( $ad->block_id) ){
+			$vars['ad2_uri']['g'] = $ad->block_id;
+		}
+	}
+}
+

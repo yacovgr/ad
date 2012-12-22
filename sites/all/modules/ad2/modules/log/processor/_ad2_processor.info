@@ -1,0 +1,14 @@
+name = Ad2 Log Processor
+description = provieds processing for clicks log
+package = Ad2
+
+core = 7.x
+
+
+dependencies[] = ad2
+dependencies[] = ad2_parent
+dependencies[] = ad2_log
+dependencies[] = ad2_statistic
+
+
+;files[] = ad2.controller.inc

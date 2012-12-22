@@ -1,0 +1,126 @@
+<?php
+
+
+/**
+ * Ad module database schema.
+ */
+function ad2_blocks_schema() {
+ /**
+  * The ad table stores administrative information about each ad.  The
+  * actual ad itself can be found in the appropriate ad type table.
+  */
+  $schema['ad2_blocks'] = array(
+    'description' => 'Stores config of ad blocks.',
+    'fields' => array(
+      'delta' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => "The block's {block}.bid.",
+      ),
+      'info' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Block description.',
+      ),
+      
+      'quantity' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 1,
+        'description' => 'number of ads to put in the block.',
+      ),
+      'types' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'which types to show in the block.',
+      ),
+      'display' => array(
+		 'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Block dispaly method.',
+	),
+	'view_mode'=>array(
+		 'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'ads dispaly view mode.',
+	),
+	'selection' => array(
+		 'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'the select function to use',
+	),
+	 'paginator' => array(
+		 'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'type of paginator',
+	),
+	'tids'=> array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'tids comma seperated',
+	),
+	
+      'data' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'description' => 'Block contents.',
+        'translatable' => TRUE,
+      ),
+      'pager_theme' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'theme of painator.',
+      ),
+      'pager_title' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'pagination title.',
+      ),
+      
+	 'theme' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => FALSE,
+        'default' => -1,
+        'description' => 'block body theme',
+      ),
+      'pages' => array(
+    	'description' => 'how many pages to show in the pagination',
+    	'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 1,
+  	)
+      
+    ),
+    'unique keys' => array(
+      'info' => array('info'),
+    ),
+    'primary key' => array('delta'),
+  );
+
+
+  return $schema;
+}
+

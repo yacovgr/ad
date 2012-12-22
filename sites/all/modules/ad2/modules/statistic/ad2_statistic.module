@@ -1,0 +1,550 @@
+<? 
+
+
+function ad2_statistic_menu(){
+
+  $items["ad2/%ad2/activity"] = array(
+    'title' => 'יומן פעילות',
+    'page callback' => 'ad2_statistic_activity_details',
+    'page arguments' => array(1),
+    'access callback' => true, // 'had_access_tab',
+    //'access arguments' => array(1, 'activity'),
+
+    'type' => MENU_LOCAL_TASK,
+    //'file' => 'had.pages.inc',
+    'weight' => 50,
+  );
+ 
+
+  $items["ad2/%ad2/status"] = array(
+    'title' => 'Statistics',
+    'page callback' => 'ad2_statistic_status_page',
+    'page arguments' => array(1),
+    'access callback' => true, // 'had_access_tab',
+    //'access arguments' => array(1, 'activity'),
+
+    'type' => MENU_LOCAL_TASK,
+    //'file' => 'had.pages.inc',
+    'weight' => 50,
+  );
+ 
+	 // $items["ad2/%ad2/details/%"] = array(
+	    // 'title' => 'Click details',
+	    // 'page callback' => 'ad2_statistic_click_details',
+	    // 'page arguments' => array(1, 3),
+	    // 'access callback' => true,
+	    // 'type' => MENU_CALLBACK,
+	    // //'file' => 'had.pages.inc',
+    // );
+// 
+// 
+   return $items;	
+}
+
+// 
+// function ad2_statistic_preprocess_block(&$vars, $hook){
+// 	
+	// return;
+// 	
+	// $block = $vars['block'];
+// 	
+	// if( $block->module == 'ad2_blocks'){
+// 		
+		// if( isset($block->ads) ){
+			// $aids = array_keys($block->ads);
+			// $delta = $block->delta;
+// 			
+			// ad2_statistic_add_block_ad_ids($delta , $aids);
+		// }
+	// }
+// }
+
+
+function ad2_statistic_ad2_selection_alter($ads , $params , $response ){
+
+	$aids = array_keys($ads);
+	$group = $params['group'];
+	
+	ad2_statistic_add_block_ad_ids($group , $aids);
+	
+}
+
+function ad2_statistic_add_block_ad_ids( $delta ,  array $aids ){
+	
+	$ad2_aids = &drupal_static('ad2_statistic_aids' , array());
+	foreach ($aids as $id ) {
+		$ad2_aids[$delta][] = $id;
+	}
+	
+}
+
+
+function ad2_statistic_exit($destination = NULL) {
+	
+	global $base_root;
+
+	$ad2_aids = &drupal_static('ad2_statistic_aids' , array());
+	
+	$cid = $base_root . request_uri();
+
+	if( count($ad2_aids)){
+		foreach ($ad2_aids as $block => $aids) {
+			foreach ($aids as $aid) {
+				ad2_statistic_increment($aid , 'view' , $block );
+			}
+		}
+		cache_set($cid , $ad2_aids , 'cache_ad2');
+
+	} else {
+
+		$cache = cache_get( $cid,  'cache_ad2');
+		if( is_object ( $cache ) ){
+
+			$ad_aids = $cache->data;
+			foreach ($ad_aids as $block => $aids) {
+				foreach ($aids as $aid) {
+					ad2_statistic_increment($aid , 'view' , $block );
+				}
+			}
+		}
+	}
+}
+/**
+ * Increment action counter.
+ */
+function ad2_statistic_increment($aid, $action, $group = NULL, $hostid = NULL) {
+  // Update action statistics.
+
+	//tr( func_get_args() );
+	
+  $hostid = $hostid ? $hostid : $_SERVER['HTTP_HOST'];
+
+  //tr( date('YmdH') );
+
+  $num_updated = db_update('ad2_statistics')
+  				->expression('count', 'count + :count', array(':count' => 1))
+				->condition('date', date('YmdH') )
+				->condition('aid', $aid )
+				->condition('action', $action )
+				->condition('hostid', $hostid )
+				->condition('adgroup', $group )
+				->execute()
+				;
+	// If column doesn't already exist, we need to add it.
+  if (!$num_updated) {
+
+	$fields = array(
+		'date' 		=> date('YmdH'),
+		'aid' 		=> $aid,
+		'action' 	=> $action,
+		'adgroup' 	=> $group,
+		'hostid' 	=> $hostid,
+		'count' 	=> 1,
+	);
+
+  	 $n = db_insert('ad2_statistics')
+  	 	->fields($fields)
+  		->execute()
+		;
+
+    // If another process already added this row our INSERT will fail, if so we
+    // still need to increment it so we don't loose an action.
+    if (! $n ) {
+    	db_update('ad2_statistics')
+  				->expression('count', 'count + :count', array(':count' => 1))
+				->condition('date', date('YmdH') )
+				->condition('aid', $aid )
+				->condition('action', $action )
+				->condition('hostid', $hostid )
+				->condition('adgroup', $group )
+				->execute()
+				;
+    }
+  }
+
+  //$event = array('aid' => $aid, 'action' => $action, 'hostid' => $hostid);
+  //module_invoke_all('adapi', 'statistics_increment', $event);
+}
+
+function ad2_statistic_entity_insert($entity, $type){
+	if( $type == 'ad2'){
+		ad2_statistic_increment($entity->aid, 'create' );
+	}
+}
+
+function ad2_statistic_entity_update($entity, $type){
+	if( $type == 'ad2'){
+		ad2_statistic_increment($entity->aid, 'update' );
+	}
+}
+
+function ad2_statistic_entity_delete($entity, $type){
+	if( $type == 'ad2'){
+		db_delete('ad2_statistics')->condition('aid', $entity->aid)->execute();
+		ad2_statistic_increment($entity->aid, 'delete' );
+		db_delete('ad2_clicks')->condition('aid', $entity->aid)->execute();
+	}
+}
+
+
+
+function ad2_statistic_activity_details($ad){
+	
+
+  	//drupal_set_breadcrumb(array(l(t('Home'), NULL), l(check_plain($node->title), 'node/'. $node->nid)));
+  	
+ // if (ad_permission($node, 'access click history')) {
+    $header = array(
+      array('data' => t('Date'), 'field' => 'date', 'sort' => 'desc'),
+      array('data' => t('Action'), 'field' => 'action')
+    );
+    //if (isset($ad->aid) && $ad->aid > 0) {
+
+		$query = db_select('ad2_statistics' , 'ads')->extend('PagerDefault')->extend('TableSort');
+		$query->fields('ads');
+		$query	->condition('ads.aid' , $ad->aid )
+			->where("ads.action NOT IN ('view', 'click')" )
+			->limit(25)
+			->orderByHeader($header)
+			;
+
+		$result = $query->execute();
+
+
+		$rows = array();
+		foreach ($result as $r) {
+	        $row = array();
+        	$row[] = format_date(strtotime($r->date . '00'), 'large');
+        	$row[] = $r->action;
+        	$rows[] = $row;
+      	}
+
+        $build['table'] = array(
+        	'#theme' => 'table',
+       		'#header' => $header , 
+       		'#rows' => $rows  , 
+       		'#empty' => '<p>'. t('There is no activity yet.') .'</p>' 
+       	);
+
+       	$build['pager'] = array(
+	   		'#theme' => 'pager',
+	   	);
+		
+    //}
+ // }
+ 
+  return  $build;
+  
+}
+
+
+function ad2_statistic_theme(){
+	
+	return array(
+
+    'ad2_statistic_display' => array(
+      //'file' => 'had.pages.inc',
+      'variables' => array(
+        'statistics' => NULL,
+      ),
+    ),
+    'ad2_statistic_status' => array(
+      //'file' => 'had.pages.inc',
+      'variables' => array(
+        'ad' => NULL,
+        'yield_form' => TRUE,
+      ),
+    ),
+   
+ );
+ 
+}
+
+
+function ad2_statistic_status_page( $ad ){
+	
+  //if (ad_permission($node, 'access statistics')) {
+
+	$build['display'] = array(
+		'#theme' => 'ad2_statistic_display',
+		'#statistics' => ad2_statistic($ad->aid),
+	);
+	
+  //}
+  
+	$build['status'] = array(
+		'#theme' => 'ad2_statistic_status',
+		'#ad' => $ad,
+		//'#weight' => 10,
+	);
+			
+	return $build;		
+	
+	
+	return 'here page';
+}
+
+
+
+function ad2_statistic($aid){
+	
+  $statistics['global']['views'] =  (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'view' ", array(':aid' => $aid) )->fetchField();
+  $statistics['global']['clicks'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'click'", array(':aid' => $aid) )->fetchField();
+
+  // No sense in making further queries if the ad has no global statistics.
+  if (!$statistics['global']['views'] && !$statistics['global']['clicks']) {
+    return $statistics;
+  }
+
+  // Get statistics for this year and last year.
+  $this_year = date('Y000000');
+  $last_year = date('Y') - 1 .'000000';
+  $p1 = array(
+  	':aid' => $aid ,
+  	':lastyear' => $last_year,
+  	':thisyear' => $this_year,
+  );
+  $p2= array(
+  	':aid' => $aid ,
+  	//':lastyear' => $last_year,
+  	':thisyear' => $this_year,
+  );
+  $statistics['last_year']['views'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'view' AND date >= :lastyear AND date <= :thisyear", $p1)->fetchField() ;
+  $statistics['last_year']['clicks'] = (int) db_query("SELECT SUM(count) FROM {ad2_statistics} WHERE aid = :aid AND action = 'click' AND date >= :lastyear AND date <= :thisyear", $p1)->fetchField() ;
+  $statistics['this_year']['views'] = (int) db_query("SELECT SUM(count) FROM {ad2_statistics} WHERE aid = :aid AND action = 'view' AND date >= :thisyear", $p2)->fetchField() ;
+  $statistics['this_year']['clicks'] = (int) db_query("SELECT SUM(count) FROM {ad2_statistics} WHERE aid = :aid AND action = 'click' AND date >= :thisyear", $p2)->fetchField() ;
+
+
+  // No sense in making further queries if the ad has no statistics this year.
+  if (!$statistics['this_year']['views'] && !$statistics['this_year']['clicks']) {
+    return $statistics;
+  }
+
+  // Get statistics for this month and last month.
+  $this_month = date('Ym0000');
+  $last_month = date('m') - 1;
+  if ($last_month == 0) {
+    $last_month = date('Y') - 1 .'120000';
+  }
+  else {
+    $last_month = date('Y') . ($last_month < 10 ? '0' : '') . $last_month .'0000';
+  }
+
+
+  $p1 = array(
+  	':aid' => $aid ,
+  	':lastmonth' => $last_month,
+  	':thismonth' => $this_month,
+  );
+  $p2= array(
+  	':aid' => $aid ,
+  	':thismonth' => $this_month,
+  );
+
+  $statistics['last_month']['views'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'view' AND date >= :lastmonth AND date <= :thismonth", $p1)->fetchField();
+  $statistics['last_month']['clicks'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'click' AND date >= :lastmonth AND date <= :thismonth", $p1 )->fetchField();
+  $statistics['this_month']['views'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'view' AND date >= :thismonth ", $p2)->fetchField();
+  $statistics['this_month']['clicks'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'click' AND date >= :thismonth ", $p2)->fetchField();
+
+
+
+
+  // No sense in making further queries if the ad has no statistics this month.
+  if (!$statistics['this_month']['views'] && !$statistics['this_month']['clicks']) {
+    return $statistics;
+  }
+
+
+  // Get statistics for this week.
+  $this_week_start = date('Ymd00', time() - 60*60*24*6);
+  $p2= array(
+  	':aid' => $aid ,
+  	':thisweekstart' => $this_week_start,
+  );
+
+  $statistics['this_week']['views'] = (int) db_query("SELECT SUM(count) FROM {ad2_statistics} WHERE aid = :aid AND action = 'view' AND date > :thisweekstart", $p2 )->fetchField();
+  $statistics['this_week']['clicks'] = (int) db_query("SELECT SUM(count) FROM {ad2_statistics} WHERE aid = :aid AND action = 'click' AND date > :thisweekstart", $p2 )->fetchField();
+
+  // No sense in making further queries if the ad has no statistics this week.
+  if (!$statistics['this_week']['views'] && !$statistics['this_week']['clicks']) {
+    return $statistics;
+  }
+
+
+
+  // Get statistics for yesterday and today.
+  $yesterday_start = date('Ymd00', time() - 60*60*24);
+  $yesterday_end = date('Ymd24', time() - 60*60*24);
+  $today_start = date('Ymd00', time());
+  $p1 = array(
+  	':aid' => $aid ,
+  	':yesterday_start' => $yesterday_start,
+  	':yesterday_end' => $yesterday_end,
+  );
+   $p2 = array(
+  	':aid' => $aid ,
+  	':today_start' 	=> $today_start,
+  );
+
+
+
+  $statistics['yesterday']['views'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'view' AND date >= :yesterday_start AND date <= :yesterday_end ", $p1)->fetchField();
+  $statistics['yesterday']['clicks'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'click' AND date >= :yesterday_start AND date <= :yesterday_end", $p1)->fetchField();
+  $statistics['today']['views'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'view' AND date >= :today_start", $p2 )->fetchField();
+  $statistics['today']['clicks'] = (int) db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'click' AND date >= :today_start", $p2 )->fetchField();
+
+  // No sense in making further queries if the ad has no statistics today.
+  if (!$statistics['today']['views'] && !$statistics['today']['clicks']) {
+    return $statistics;
+  }
+
+
+
+  // Get statistics for this hour and the last hour.
+  $last_hour = date('YmdH', time() - 60*60);
+  $this_hour = date('YmdH', time());
+  $p1 = array(
+  	':aid' => $aid ,
+  	':last_hour' 	=> $last_hour,
+  );
+  $p2 = array(
+  	':aid' => $aid ,
+  	':this_hour' 	=> $this_hour,
+  );
+  $statistics['last_hour']['views'] = (int)db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'view' AND date = :last_hour", $p1)->fetchField();
+  $statistics['last_hour']['clicks'] = (int)db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'click' AND date = :last_hour", $p1)->fetchField();
+  $statistics['this_hour']['views'] = (int)db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'view' AND date = :this_hour", $p2 )->fetchField();
+  $statistics['this_hour']['clicks'] = (int)db_query("SELECT SUM(count) FROM ad2_statistics WHERE aid = :aid AND action = 'click' AND date = :this_hour", $p2 )->fetchField();
+
+
+  return $statistics;
+}
+
+
+
+function theme_ad2_statistic_status($vars  /*$node, $yield_form = TRUE*/) {
+
+	global $user;
+	
+	//return "here is the stuff";
+
+	$ad = $vars['ad'];
+	$output = '';
+	
+  //if (ad_permission($node, 'access statistics')) {
+   // $output = ''; 
+   // $output .= theme('ad2_statistic_display', array( 'statistics' => ad2_statistic($ad->aid) ));
+  //}
+
+
+	// this is not good, need to create a permission
+  if ( ! array_key_exists(4, $user->roles) ) {
+    $header = array(
+      array('data' => t('Time'), 'field' => 'timestamp', 'sort' => 'desc'),
+      array('data' => t('User'), 'field' => 'uid'),
+      array('data' => t('URL where clicked'), 'field' => 'url'),
+      ''
+    );
+
+//    if (function_exists('click_filter_status_text') && user_access('view filtered clicks')) {
+//      $header[] = array('data' => t('Status'), 'field' => 'status');
+//    }
+    $header[] = '';
+
+    if (isset($ad->aid) && $ad->aid > 0) {
+
+    	 $query = db_select('ad2_clicks' , 'ac')->extend('PagerDefault')->extend('TableSort');
+  		 $query->fields('ac' , array('cid', 'timestamp', 'uid', 'status', 'hostname', 'url'));
+  		 $query	->condition('ac.aid' , $ad->aid )
+  		 		->limit(25)
+  				->orderByHeader($header)
+  				;
+
+  		$result = $query->execute();
+    	$rows = array();
+
+		foreach ($result as $r) {
+			//tr( $ad );
+//      while ($ad = db_fetch_object($result)) {
+//        if (module_exists('click_filter') && $ad->status != CLICK_VALID) {
+//          // Only show filtered clicks to users with permission to view them.
+//          if (!user_access('view filtered clicks')) {
+//            continue;
+//          }
+//        }
+        if (strlen($r->url) > 40) {
+          $url = substr($r->url, 0, 37) .'...';
+        }
+        else {
+          $url = $r->url;
+        }
+
+        $row = array();
+
+        $click_user = user_load($r->uid);
+        $row[] = format_date($r->timestamp, 'custom', 'M j H:i');
+        $row[] = theme('username', array('account' => $click_user) );
+
+        $row[] = l($url, $r->url);
+//        if (function_exists('click_filter_status_text') && user_access('view filtered clicks')) {
+          $row[] = click_filter_status_text($r->status);
+//        }
+        $row[] = '['. l(t('details'), 'node/'. $r->aid .'/details/'. $r->cid) .']';
+        $rows[] = $row;
+      }
+
+
+        $click_history = theme('table', array('header' => $header , 'rows' => $rows , 'empty' =>  '<p>'. t('There are no clicks yet.') .'</p>' ) );
+      //die();
+      $click_history .= theme('pager', array(/*'parameters' => 5 , 'quantity' => 5*/ ));
+      $output .= $click_history;
+
+    }
+	}
+  return $output;
+}
+
+
+
+function theme_ad2_statistic_display($vars) {
+
+
+
+	$statistics = $vars['statistics'];
+
+  $header = array('', t('Impressions'), t('Clicks'), t('Click-thru'));
+  $rows = array();
+
+  $data = array(
+   'this_hour' => t('This hour'),
+   'last_hour' => t('Last hour'),
+   'today' => t('Today'),
+   'yesterday' => t('Yesterday'),
+   'this_week' => t('Last seven days'),
+   'this_month' => t('This month'),
+   'last_month' => t('Last month'),
+   'this_year' => t('This year'),
+   'last_year' => t('Last year'),
+   'global' => t('All time')
+  );
+
+  foreach ($data as $key => $value) {
+    if (isset($statistics[$key]) && (isset($statistics[$key]['views']) || isset($statistics[$key]['clicks']) || $key == 'global')) {
+      $rows[] = array(
+        array('data' => $value),
+        array('data' => (int)$statistics[$key]['views']),
+        array('data' => (int)$statistics[$key]['clicks']),
+        array('data' => $statistics[$key]['views'] ? sprintf('%1.2f', ((int)$statistics[$key]['clicks'] / (int)$statistics[$key]['views']) * 100) .'%' : '0.00%'),
+      );
+    }
+  }
+  if (empty($rows) || (!$statistics['global']['views'] && !$statistics['global']['clicks'])) {
+    $statistics = '<p>'. t('There are currently no statistics for this advertisement.') .'</p>';
+  }
+  else {
+    $statistics = theme('table', array('header' =>  $header, 'rows' => $rows));
+  }
+
+  //tr( $statistics );
+  return $statistics; //theme('box', t('Statistics'), $statistics);
+}

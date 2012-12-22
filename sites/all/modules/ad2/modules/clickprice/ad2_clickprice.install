@@ -1,0 +1,48 @@
+<?
+
+function ad2_clickprice_install(){
+	
+	return;
+	
+	$field_name = AD2_CLICKPRICE_FIELD;
+	$entity_type = 'ad2';
+	
+	if (!field_info_field($field_name)) {
+		
+	
+		$field = array(
+		    'field_name' => $field_name,
+		    'type' => 'number_decimal',
+		    'entity_types' => array($entity_type),
+		    'cardinality' => 1,
+		    'translatable' => FALSE,
+		    'locked' => FALSE,
+	  	);
+  		$field = field_create_field($field);
+  
+	}
+  
+  	foreach (ad2_types() as $bundle => $benefit_type) {
+  		
+		  if (!field_info_instance($entity_type, $field_name, $bundle)) {
+			  $instance = array(
+			    'field_name' => $field_name,
+			    'bundle' => $bundle,
+			    'entity_type' => $entity_type,
+			    'label' => t('Ad Click Price'),
+			    //'description' => t('This is the text of all messages of this type.'),
+			    'required' => TRUE,
+			    // 'settings' => array(
+			      // 'text_processing' => 1,
+			    // ),
+			  );
+			  field_create_instance($instance);
+		  }
+  
+	}
+	
+	
+	
+}
+
+

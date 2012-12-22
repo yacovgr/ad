@@ -1,0 +1,40 @@
+<?php
+
+
+function ad2_batch_schema(){
+	
+	
+	$schema['ad2_batch'] = array(
+    'description' => 'The ad_batch table stores the batch information.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'id of the batch',
+      ),
+      'data' => array(
+      	'description' => 'A collection of data to store.',
+	    'type' => 'blob',
+        'not null' => FALSE,
+        'size' => 'big',
+	  ),
+	  'created' => array(
+        'description' => 'A Unix timestamp indicating when the cache entry was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+	  
+    ),
+    'primary key' => array('id'),
+    'indexes' => array(),
+  );
+  
+  return $schema;
+}
+
+
+function ad2_batch_uninstall(){
+	variable_del('ad2_batch_cron_last');
+}

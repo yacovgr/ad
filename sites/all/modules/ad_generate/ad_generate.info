@@ -1,0 +1,12 @@
+name = Ads Generate
+description = generate ads entities for ads system
+package = Ads
+
+core = 7.x
+
+
+dependencies[] = entity
+dependencies[] = views
+dependencies[] = ad
+dependencies[] = devel_generate
+

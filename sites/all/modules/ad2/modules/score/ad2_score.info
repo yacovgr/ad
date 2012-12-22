@@ -1,0 +1,5 @@
+name = Ad2 Score
+description = calculate quality score for each ad in each category 
+core = 7.x
+package = ad2
+dependencies[] = ad2_rank

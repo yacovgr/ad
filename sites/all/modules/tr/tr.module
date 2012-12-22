@@ -1,0 +1,13 @@
+<?php
+
+function tr( $a,$die=false ){
+	
+	echo "<pre dir='ltr'>";
+	print_r($a);
+	echo "</pre>";
+	
+	if ($die){
+	  die();
+	}
+	
+}

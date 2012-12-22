@@ -1,0 +1,31 @@
+<?
+
+
+function ad2_loyalty_install() {
+	
+	if( ! db_field_exists('ad2_rank' , 'comp_loyalty') ){
+	db_add_field('ad2_rank' , 'comp_loyalty'  , array(
+		'type' => 'numeric',
+	     'precision' => 5,
+	     'scale' => 3,
+	     'not null' => TRUE,
+ 		 'default' => 1,
+ 		 'unsigned' => true,
+		'description' => 'compoenent loyalty',
+	));
+	}
+	  
+}
+
+
+
+
+function ad2_loyalty_uninstall() {
+	
+	variable_del('ad2_loyalty_default_last_ad2_cron_run');
+	
+	if( db_field_exists('ad2_rank' , 'comp_loyalty') ){
+		db_drop_field('ad2_rank' , 'comp_loyalty' );
+	}
+	
+}

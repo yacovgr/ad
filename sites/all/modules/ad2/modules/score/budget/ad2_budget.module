@@ -1,0 +1,79 @@
+<?
+
+
+function ad2_budget_ad2_score_component_info(){
+	return array(
+		'budget' => 'ניצול תקציב יומי',
+	);
+}
+
+function ad2_budget_ad2_cron_info(){
+	$jobs['score']['info'] = 'budget score component';
+	return $jobs;
+}
+  
+function ad2_budget_ad2_cron_run($delta){
+	
+	
+	$last = variable_get('ad2_budget_score_last_ad2_cron_run' , 0);
+	
+	if( REQUEST_TIME > ( $last + 60 ) ){
+		
+		// here i need to query 
+		
+		// $query = db_select('ads' , 'a');
+		// $query->fields('a' , array( 'aid' , 'nid' ));
+		// $query->condition('a.adstatus' , 'active');
+// 		
+		// $rows = $query->execute()->fetchAll();
+// 		
+		// $sites = array();
+		// foreach ($rows as $row ) {
+			// $sites[$row->nid][] = $row->aid;
+		// }
+		
+		$roofs = db_query('select nid, roof from ad2_roof')->fetchAllKeyed();
+			
+		$count = 0;
+		foreach ($roofs as $nid => $roof ) {
+			
+			$site = new stdClass;
+			$site->nid = $nid;
+			$site->roof = $roof; //$roofs[$nid];
+			$site->today = _ad2_budget_get_map($nid);
+			
+			$score = 1;
+			if( $site->roof > 0 ){
+				$prec = round( $site->today / $site->roof , 3 );
+				$score = 0.5 + (1-$prec);
+				if( $score > 1.5 ) $score = 1.5;
+				if( $score < 0.5 ) $score = 0.5;
+			}
+		
+			$n = db_update('ad2_rank')
+				->fields(array('comp_budget' => $score , 'rerank' => 1) )
+				->condition('nid' , $nid  )
+				->execute()
+				;
+			$count += $n;	
+			
+		}	
+		
+		watchdog('budget cron' , '@n rows updated' , array('@n' => $count ) );
+
+		variable_set('ad2_budget_score_last_ad2_cron_run' , REQUEST_TIME );
+	}
+
+}
+ 
+
+// toto : static the drupal way
+function _ad2_budget_get_map( $nid ){
+
+	static $sependings;
+	
+	if( ! isset( $sependings[$nid]) ){
+		$sependings[$nid] 	= -1 * account_balance_spending_today( $nid );
+	}
+	return $sependings[$nid];
+}

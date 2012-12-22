@@ -1,0 +1,251 @@
+<?
+
+function ad2_roof_week_menu(){
+
+	$items['node/%node/ad2/roof-week'] = array(
+		'title' 		=> 'הגדרות שבועית תקרה יומית',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('ad2_roof_week_form' , 1),
+		'access callback' => true, // 'ad2_parent_access_tab',
+		//'access arguments' => array(1 , 'had'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 3,
+		//'file' => 'ad2_parent.pages.inc',
+	);
+	
+	return $items;
+}
+
+
+function ad2_roof_week_menu_alter(&$items){
+
+	$items['admin/reports/ad2/roof']['page callback'] = 'ad2_roof_week_report_page';
+	$items['admin/reports/ad2/roof']['file'] = 'week/ad2_roof_week.admin.inc';
+	
+}
+
+
+// 
+// function ad2_roof_block_info(){
+// 
+	// $blocks['owner']['info'] = t('תקציב: יעד יומי');
+  // $blocks['owner']['cache'] = DRUPAL_NO_CACHE;
+// 
+  // $blocks['week']['info'] = t('תקציב: יעדים יומיים');
+  // $blocks['week']['cache'] = DRUPAL_NO_CACHE;
+// 
+// 
+// 
+	// return $blocks;
+// }
+
+// 
+// function ad2_roof_block_view($delta){
+// 
+	// switch ($delta) {
+		// case 'owner':
+// 
+			// $nid = arg(1);
+			// $node = node_load($nid);
+// 
+			// if( ! $node || ! had_access_tab($node,'had') )
+				// return;
+// 
+// 
+			// $build = array(
+				// 'roof' 		=> drupal_get_form('had_roof_form' , $node ),
+			// );
+			// break;
+		// case 'week':
+// 
+			// $nid = arg(1);
+			// $node = node_load($nid);
+// 
+			// if( ! $node || ! had_access_tab($node,'had') )
+				// return;
+// 
+// 
+			// $build = array(
+				// 'roof' 		=> drupal_get_form('had_week_roof_form' , $node ),
+			// );
+			// break;
+// 
+		// default:
+// 
+			// break;
+	// }
+// 
+	// $block['content'] = $build;
+// 
+	// return $block;
+// }
+
+
+
+function ad2_roof_week_form( &$form  , &$form_state ,  $node  ){
+
+
+	global $user;
+
+
+	$days = db_query('select * from ad2_roof where nid = :nid' , array(':nid' => $node->nid))->fetchAll();
+
+	//tr($days);
+
+	$days_values = array();
+	$days_values['sunday'] = (isset($days[0]->Sunday))?$days[0]->Sunday:0;
+	$days_values['monday'] = (isset($days[0]->Monday))?$days[0]->Monday:0;
+	$days_values['tuesday'] = (isset($days[0]->Tuesday))?$days[0]->Tuesday:0;
+	$days_values['wednesday'] = (isset($days[0]->Wednesday))?$days[0]->Wednesday:0;
+	$days_values['thursday'] = (isset($days[0]->Thursday))?$days[0]->Thursday:0;
+	$days_values['friday'] = (isset($days[0]->Friday))?$days[0]->Friday:0;
+	$days_values['saturday'] = (isset( $days[0]->Saturday))? $days[0]->Saturday:0 ;
+
+
+//	$form['#node'] 		= $node;
+//
+//	$form['fs'] = array(
+//		'#type' => 'fieldset',
+//		'#title' => '<h3>' .  t('תקציב: יעדים יומיים למשך כל יום מימות השבוע') . '</h3>',
+//		'#prefix' => '<div id="had-roof-week-results">',
+//		'#suffix' => '</div>',
+//	);
+//
+//	$form['fs']['help1'] = array(
+//		'#markup' => t('יעד תקציב הפרסום שבחרת ללמשך כל יום מימות השבוע'),
+//	);
+//
+
+	$form['msg'] = array(
+		'#prefix' => '<div id="had-roof-week-results-msg"></div>',
+		'#markup' => '',
+		'#weight' => 0,
+	);
+
+	$form['days'] = array(
+
+		'#type' 	=> 'items',
+		'#tree' 	=> true,
+		'#theme' 	=> 'ad2_roof_week_table',
+		'#days' 	=> $days_values,
+	);
+
+
+	$n = 1;
+  foreach ($days_values as $day =>$value){
+
+    $form['days'][$day] = array(
+    		'#type' => 'textfield',
+    		'#default_value' => $value,
+    		//'#title' => t('יעד יומי'),
+
+    		'#description' => t('יעד יומי'),
+    		//'#required' => true,
+    		'#size' => 4,
+    		'#weight' => $n,
+
+    	);
+    	$n++;
+  }
+
+
+	$form['days']['nid'] = array(
+	     '#type' => 'hidden',
+	     '#value' => $node->nid,
+
+	);
+
+	$form['days']['help'] = array(
+	  '#prefix' => '<div id="had-roof-week-help">',
+	  '#markup' => t('had roof week help'),
+	  '#suffix' => '</div>',
+	  '#weight' => 10,
+	);
+
+
+
+	$form['days']['submit'] = array(
+		'#type' => 'submit',
+		'#title' => t('Save'),
+		'#value' => t('Save'),
+		 '#ajax' => array(
+     		'callback' => 'ad2_roof_week_form_js',
+     		 'wrapper' => 'had-roof-week-results-msg',
+     		 'method' => 'replace',
+     		 '#weight' => 20,
+     		// 'effect' => 'fade',
+   		 ),
+	);
+
+	return $form;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function ad2_roof_week_theme($existing, $type, $theme, $path) {
+  return array(
+    'ad2_roof_week_table' => array(
+      'file' => 'ad2_roof_week.admin.inc',
+      'render element' => 'form',
+    ),
+
+ );
+}
+
+
+function ad2_roof_week_form_submit($form  , &$form_state ){
+
+ // tr($form);
+  //tr($form['days']['#days']);
+//  die();
+  $days = $form['days']['#days'];
+  $fields = array();
+  foreach ($days as $day => $v){
+    //tr($day);
+    //tr($day['#value']);
+    $fields[$day] = $form['days'][$day]['#value'];
+  }
+  $fields['nid'] = $form['days']['nid']['#value'];
+//tr($fields);
+//  die();
+
+  db_update('ad2_roof')
+				->condition('nid' , $fields['nid'])
+				->fields($fields)
+				->execute()
+				;
+
+	drupal_set_message('הנתונים נשמרו בבסיס הנתונים');
+
+}
+
+function ad2_roof_week_form_js($form  , &$form_state ){
+
+  return $form['msg'];
+}
+
+
+function ad2_roof_week_form_validate( &$form  , &$form_state  ){
+
+  $min_per_day = variable_get('had_roof_min_defualt',20);
+
+	$days = $form['days']['#days'];
+
+  foreach ($days as $day => $v){
+    //tr($day);
+    //tr($day['#value']);
+    $day_value =  $form['days'][$day]['#value'];
+    //tr($day_value);
+
+    if (! is_numeric($day_value)){
+      form_error($form['days'][$day] ,t('נא להזין ערך מספרי'));
+    }elseif ($day_value == 0){
+      //do nothing it's ok
+    }elseif ($day_value < $min_per_day){
+      form_error($form['days'][$day] ,t('לא ניתן להכניס תקציב יומי קטן מ@num ש"ח', array('@num'=>$min_per_day)));
+      //break;
+    }
+  }
+}
+

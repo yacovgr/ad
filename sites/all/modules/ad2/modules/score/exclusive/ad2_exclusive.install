@@ -1,0 +1,30 @@
+<?
+
+
+function ad2_exclusive_install() {
+	
+	if( ! db_field_exists('ad2_rank' , 'comp_exclusive') ){
+	db_add_field('ad2_rank' , 'comp_exclusive'  , array(
+		'type' => 'numeric',
+	     'precision' => 5,
+	     'scale' => 3,
+	     'not null' => TRUE,
+ 		 'default' => 1,
+ 		 'unsigned' => true,
+		'description' => 'compoenent exclusive',
+	));
+	}
+	  
+}
+
+
+
+function ad2_exclusive_uninstall() {
+	
+	variable_del('ad2_exclusive_default_last_ad2_cron_run');
+	
+	if( db_field_exists('ad2_rank' , 'comp_exclusive') ){
+		db_drop_field('ad2_rank' , 'comp_exclusive' );
+	}
+	
+}

@@ -1,0 +1,7 @@
+name = Ad2 Blocks
+description = provieds ad2 blocks
+package = Ad2
+
+core = 7.x
+
+dependencies[] = ad2

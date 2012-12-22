@@ -1,0 +1,6 @@
+name = Ad2 Bids Select 
+description = "select ads according to bids."
+core = 7.x
+package = ad2
+dependencies[] = ad2
+dependencies[] = ad2_bids

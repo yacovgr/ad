@@ -1,0 +1,50 @@
+<?
+
+function ad2_cron_menu(){
+	
+  $items["admin/config/ad2/cron"] = array(
+    'title' => 'cron',
+    'page callback' => 'ad2_cron_page',
+    'access arguments' => array( 'administer advertisements'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'ad2_cron.admin.inc',
+    'weight' => 10,
+  );
+
+	return $items;
+}
+
+
+function ad2_cron_cron(){
+	_ad2_cron_run_now();
+}
+
+function _ad2_cron_run_now(){
+	$jobs = db_select('ad2_cron' , 'ac')
+		->fields('ac')
+		->condition('status' , 1)
+		->orderby('weight')
+		->execute()
+		->fetchAll()
+		;
+	foreach ( $jobs as $job ) {
+		$module = $job->module;
+		module_invoke($module , 'ad2_cron_run' , $job->delta );
+	}
+}
+
+
+/**
+ * Implementation of hook_theme().
+ */
+function ad2_cron_theme($existing, $type, $theme, $path) {
+	
+  return array(
+    'ad2_cron_page_form' => array(
+      'file' => 'ad2_cron.admin.inc',
+       'render element' => 'form',
+    ),
+ );
+}
+
+	

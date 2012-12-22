@@ -1,0 +1,489 @@
+<?php
+
+function ad2( &$params , $response ){
+	
+	
+	//tr( module_implements('ad2_selection_alter') );
+	
+	if( ! isset($params['quantity']))
+		$params['quantity'] = 10;
+	
+	if( ! isset($params['page']))
+		$params['page'] = 0;
+	
+	
+	$quantity 	= $params['quantity'];
+	$page	 	= $params['page'];
+	
+	$function 	= $params['function'];
+	
+	
+	if( $function !=  'ad2' ){
+		$function($params , $response );
+	} else {
+		
+		$q = db_select('ad2' , 'a');
+		$q->fields('a' , array('aid'));
+		if( isset($params['types']) && is_array($params['types']) && count($params['types'])){
+			$q->condition('type' , $params['types']);
+		}
+		
+		
+		$response->total = $q->countQuery()->execute()->fetchField();
+		
+		$q->range(0,$quantity);
+		$q->orderRandom();
+		$ids = $q->execute()->fetchCol();
+		
+		$response->ad2_ids 	= $ids;
+	}
+	
+	
+	$ads = ad2_load_multiple( $response->ad2_ids );
+	
+	//tr( module_implements('ad2_selection_alter') );
+	
+	module_invoke_all('ad2_selection_alter' , $ads , $params , $response );
+	
+	return $ads;
+	
+}
+
+function _ad2_ad2_selection_alter($ads , $params , $response ){
+
+	//tr($params);
+	
+	// $group = $params['group'];
+	// foreach ($ads as $ad) {
+		// $ad->block_id = $group;
+	// }
+// 	
+	// $ad2_nids = &drupal_static('ad2_nids' , array());
+	// foreach ($ads as $ad ) {
+		// if( $ad->nid)
+			// $ad2_nids[$delta][] = $ad->nid;
+	// }
+	
+}
+
+
+function ad2_ad2_selection_info(){
+	return array(
+		'ad2' => array(
+			'title' => 'ad2',
+		) 
+	);
+}
+/**
+ * Implements hook_entity_info().
+ */
+function ad2_entity_info() {
+  $return = array(
+    'ad2' => array(
+      'label' => t('Ad'),
+      'entity class' => 'Ad2',
+      'controller class' => 'Ad2Controller',
+      'base table' => 'ad2',
+      'fieldable' => TRUE,
+      'entity keys' => array(
+        'id' => 'aid',
+        'bundle' => 'type',
+      ),
+      'bundle keys' => array(
+        'bundle' => 'type',
+      ),
+      'bundles' => array(),
+      'load hook' => 'ad2_load',
+      'view modes' => array(
+        'full' => array(
+          'label' => t('Default'),
+          'custom settings' => TRUE,
+        ),
+        'teaser' => array(
+          'label' => t('Teaser'),
+          'custom settings' => TRUE,
+        ),
+      ),
+      'label callback' => 'entity_class_label',
+      'uri callback' => 'entity_class_uri',
+      'module' => 'ad2',
+      'permission labels' => array(
+        'singular' => t('Ad'),
+        'plural' => t('Ads'),
+      ),
+      'access callback' => 'ad2_access',
+    ),
+  );
+  $return['ad2_type'] = array(
+    'label' => t('Ad Type'),
+    'entity class' => 'Ad2Type',
+    'controller class' => 'Ad2TypeController',
+    'base table' => 'ad2_type',
+    'fieldable' => FALSE,
+    'bundle of' => 'ad2',
+    'exportable' => TRUE,
+    'entity keys' => array(
+      'id' => 'id',
+      'name' => 'type',
+      'label' => 'label',
+    ),
+    'module' => 'ad2',
+    // Enable the entity API's admin UI.
+    'admin ui' => array(
+      'path' => 'admin/structure/ad2-types',
+      'file' => 'ad2.admin.inc',
+      'controller class' => 'Ad2TypeUIController',
+    ),
+    'access callback' => 'ad2_type_access',
+  );
+
+  return $return;
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function ad2_entity_info_alter(&$entity_info) {
+	//tr( $entity_info['contacts'] );
+	//die();
+	
+	//$entity_info['contacts']['schema_fields_sql']['base table'][] = 'phone';
+	
+  foreach (ad2_types() as $type => $info) {
+    $entity_info['ad2']['bundles'][$type] = array(
+      'label' => $info->label,
+      'admin' => array(
+        'path' => 'admin/structure/ad2-types/manage/%ad2_type',
+        'real path' => 'admin/structure/ad2-types/manage/' . $type,
+        'bundle argument' => 4,
+      ),
+    );
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function ad2_menu() {
+  $items = array();
+
+  $items['ad2/add'] = array(
+    'title' => 'Add Ad',
+    'page callback' => 'ad2_admin_add_page',
+    'access arguments' => array('administer ad2 entities'),
+    'file' => 'ad2.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+    'tab_parent' => 'ad2',
+    'tab_root' => 'ad2',
+  );
+
+  $task_uri = 'ad2/%ad2';
+  $task_uri_argument_position = 1;
+
+  $items[$task_uri] = array(
+    'title callback' => 'entity_label',
+    'title arguments' => array('ad2', $task_uri_argument_position),
+    'page callback' => 'ad2_view',
+    'page arguments' => array($task_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('view', 'ad2', $task_uri_argument_position),
+    'file' => 'ad2.pages.inc',
+  );
+
+  $items[$task_uri . '/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items[$task_uri . '/delete'] = array(
+    'title' => 'Delete contact',
+    'title callback' => 'ad2_label',
+    'title arguments' => array($task_uri_argument_position),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad2_delete_form', $task_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'ad2', $task_uri_argument_position),
+    'file' => 'ad2.admin.inc',
+  );
+
+  $items[$task_uri . '/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad2_form', $task_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'ad2', $task_uri_argument_position),
+    'file' => 'ad2.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+
+  foreach (ad2_types() as $type => $info) {
+    $items['ad2/add/' . $type] = array(
+      'title' => 'Add contact',
+      'page callback' => 'ad2_add',
+      'page arguments' => array(2),
+      'access callback' => 'entity_access',
+      'access arguments' => array('create', 'ad2', $type),
+      'file' => 'ad2.admin.inc',
+    );
+  }
+
+  $items['admin/structure/ad2-types/%ad2_type/delete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad2_type_form_delete_confirm', 4),
+    'access arguments' => array('administer ad2 types'),
+    'weight' => 1,
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'ad2.admin.inc',
+  );
+
+
+	$items['admin/config/ad2'] = array(
+		'title' => 'Ad2 Confige',
+    	'page callback' => 'ad2_config_page',
+    	'access arguments' => array('administer ad2 types'),
+    	'weight' => 1,
+    	'type' => MENU_NORMAL_ITEM,
+    	'file' => 'ad2.admin.inc',
+	);
+	
+
+	$items['admin/reports/ad2'] = array(
+		'title' => 'Ad2 Reports',
+    	'page callback' => 'ad2_report_page',
+    	'access arguments' => array('administer ad2 types'),
+    	'weight' => 1,
+    	'type' => MENU_NORMAL_ITEM,
+    	'file' => 'ad2.pages.inc',
+	);
+	
+
+	$items['admin/reports/ad2/default'] = array(
+		'title' => 'Ad2 Reports',
+    	'weight' => 1,
+    	'type' => MENU_DEFAULT_LOCAL_TASK,
+	);
+	
+	
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function ad2_permission() {
+  $permissions = array(
+    'administer ad2 types' => array(
+      'title' => t('Administer ad2 types'),
+      'description' => t('Allows users to configure ad2 types and their fields.'),
+      'restrict access' => TRUE,
+    ),
+    'create ad2 entities' => array(
+      'title' => t('Create ads'),
+      'description' => t('Allows users to create ads.'),
+      'restrict access' => TRUE,
+    ),
+    'view ad2 entities' => array(
+      'title' => t('View Ads'),
+      'description' => t('Allows users to view ads.'),
+      'restrict access' => TRUE,
+    ),
+    'edit any ad2 entities' => array(
+      'title' => t('Edit any ads'),
+      'description' => t('Allows users to edit any ads.'),
+      'restrict access' => TRUE,
+    ),
+    'edit own ad2 entities' => array(
+      'title' => t('Edit own ads'),
+      'description' => t('Allows users to edit own ads.'),
+      'restrict access' => TRUE,
+    ),
+  );
+
+  return $permissions;
+}
+
+
+/**
+ * Implements hook_entity_property_info_alter().
+ */
+function ad2_entity_property_info_alter(&$info) {
+  $properties = &$info['ad2']['properties'];
+  $properties['created'] = array(
+    'label' => t("Date created"),
+    'type' => 'date',
+    'description' => t("The date the node was posted."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer nodes',
+    'schema field' => 'created',
+  );
+  $properties['changed'] = array(
+    'label' => t("Date changed"),
+    'type' => 'date',
+    'schema field' => 'changed',
+    'description' => t("The date the node was most recently updated."),
+  );
+  $properties['uid'] = array(
+    'label' => t("Author"),
+    'type' => 'user',
+    'description' => t("The author of the task."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer ads entities',
+    'required' => TRUE,
+    'schema field' => 'uid',
+  );
+  
+  // $properties['phone'] = array(
+    // 'label' => t("Phone"),
+    // 'type' => 'text',
+    // 'description' => t("Phone Number."),
+    // //'setter callback' => 'entity_property_verbatim_set',
+    // //'setter permission' => 'administer ads entities',
+    // //'required' => TRUE,
+    // 'schema field' => 'phone',
+  // );
+  
+}
+
+
+/*******************************************************************************
+ ********************************* Task API's **********************************
+ ******************************************************************************/
+
+/**
+ * Access callback for task.
+ */
+function ad2_access($op, $ad, $account = NULL, $entity_type = NULL) {
+  global $user;
+
+  if (!isset($account)) {
+    $account = $user;
+  }
+  switch ($op) {
+    case 'create':
+      return user_access('administer ad2 entities', $account)
+          || user_access('create ad2 entities', $account);
+    case 'view':
+      return user_access('administer ads entities', $account)
+          || user_access('view ad2 entities', $account);
+    case 'edit':
+      return user_access('administer ad2 entities')
+          || user_access('edit any ad2 entities')
+          || (user_access('edit own ad2 entities') && ($ad->uid == $account->uid));
+  }
+}
+
+/**
+ * Load a task.
+ */
+function ad2_load($aid, $reset = FALSE) {
+  $tasks = ad2_load_multiple(array($aid), array(), $reset);
+  return reset($tasks);
+}
+
+/**
+ * Load multiple tasks based on certain conditions.
+ */
+function ad2_load_multiple($aids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('ad2', $aids, $conditions, $reset);
+}
+
+/**
+ * Save task.
+ */
+function ad2_save($contact) {
+  entity_save('ad2', $contact);
+}
+
+/**
+ * Delete single task.
+ */
+function ad2_delete($task) {
+  entity_delete('ad2', entity_id('ad2' ,$task));
+}
+
+/**
+ * Delete multiple tasks.
+ */
+function ad2_delete_multiple($task_ids) {
+  entity_delete_multiple('ad2', $task_ids);
+}
+
+
+/*******************************************************************************
+ ****************************** Task Type API's ********************************
+ ******************************************************************************/
+
+/**
+ * Access callback for task Type.
+ */
+function ad2_type_access($op, $entity = NULL) {
+  return user_access('administer ad2 types');
+}
+
+/**
+ * Load task Type.
+ */
+function ad2_type_load($task_type) {
+  return ad2_types($task_type);
+}
+
+/**
+ * List of task Types.
+ */
+function ad2_types($type_name = NULL) {
+  $types = entity_load_multiple_by_name('ad2_type', isset($type_name) ? array($type_name) : FALSE);
+  return isset($type_name) ? reset($types) : $types;
+}
+
+/**
+ * Save task type entity.
+ */
+function ad2_type_save($task_type) {
+  entity_save('ad2_type', $task_type);
+}
+
+/**
+ * Delete single case type.
+ */
+function ad2_type_delete($task_type) {
+  entity_delete('ad2_type', entity_id('ad2_type' ,$task_type));
+}
+
+/**
+ * Delete multiple case types.
+ */
+function ad2_type_delete_multiple($task_type_ids) {
+  entity_delete_multiple('ad2_type', $task_type_ids);
+}
+
+/**
+  * Implements hook_views_api().
+  */
+function ad2_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'ad2'),
+  );
+}
+
+
+
+
+// 
+// function adsschema_alter(&$schema) {
+  // // Add field to existing schema.
+//   
+  // $schema['ads']['fields']['phone'] = array(
+    // 'type' => 'varchar',
+    // 'length' => 254,
+    // 'not null' => FALSE,
+    // 'default' => '',
+    // 'description' => "Contacts's cell phone.",
+  // );
+//   
+//   
+// }
+

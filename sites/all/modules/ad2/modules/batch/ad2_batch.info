@@ -1,0 +1,8 @@
+name = Ad2 Batch
+description = "Provides for log of sets of ads for furter proccecing"
+core = 7.x
+package = ad2
+
+dependencies[] = ad2
+dependencies[] = ad2_clickprice
+dependencies[] = ad2_blocks

@@ -1,0 +1,8 @@
+name = Ad2 Image
+description = provieds ads with image field
+package = Ad2
+
+core = 7.x
+
+
+dependencies[] = ad2

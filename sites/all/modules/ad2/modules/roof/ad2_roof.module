@@ -1,0 +1,488 @@
+<?
+
+
+function ad2_roof_menu(){
+
+	$items['admin/tasks/ad2roof'] = array(
+		'title' => t('Roof Tasks'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('ad2_roof_tasks_form' ) ,
+		'access arguments' => array('run accounts tasks'),
+		'file' => 'ad2_roof.admin.inc',
+		'weight' => 5,
+	);
+
+	$items['admin/config/ad2/ad2roof'] = array(
+		'title' => 'תקרה יומית',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('ad2_roof_settings_form' ) ,
+		'access arguments' => array('administer advertisements'),
+		'file' => 'ad2_roof.admin.inc',
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 5,
+	);
+
+	$items['admin/reports/ad2/roof'] = array(
+		'title' => 'תקרה יומית',
+		'page callback' => 'ad2_roof_report_page',
+		//'page arguments' => array('had_roof_settings_form' ) ,
+		'access arguments' => array('administer advertisements'),
+		'file' => 'ad2_roof.admin.inc',
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 5,
+	);
+
+	$items['node/%node/ad2/roof'] = array(
+		'title' 		=> 'הגדרות תקרה יומית',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('ad2_roof_form' , 1),
+		'access callback' => true, // 'ad2_parent_access_tab',
+		//'access arguments' => array(1 , 'had'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 2,
+		//'file' => 'ad2_parent.pages.inc',
+	);
+	
+
+	return $items;
+}
+
+
+// 
+// function ad2_roof_block_info(){
+// 
+	// $blocks['owner']['info'] = t('תקציב: יעד יומי');
+  // $blocks['owner']['cache'] = DRUPAL_NO_CACHE;
+// 
+  // $blocks['week']['info'] = t('תקציב: יעדים יומיים');
+  // $blocks['week']['cache'] = DRUPAL_NO_CACHE;
+// 
+// 
+// 
+	// return $blocks;
+// }
+
+// 
+// function ad2_roof_block_view($delta){
+// 
+	// switch ($delta) {
+		// case 'owner':
+// 
+			// $nid = arg(1);
+			// $node = node_load($nid);
+// 
+			// if( ! $node || ! had_access_tab($node,'had') )
+				// return;
+// 
+// 
+			// $build = array(
+				// 'roof' 		=> drupal_get_form('had_roof_form' , $node ),
+			// );
+			// break;
+		// case 'week':
+// 
+			// $nid = arg(1);
+			// $node = node_load($nid);
+// 
+			// if( ! $node || ! had_access_tab($node,'had') )
+				// return;
+// 
+// 
+			// $build = array(
+				// 'roof' 		=> drupal_get_form('had_week_roof_form' , $node ),
+			// );
+			// break;
+// 
+		// default:
+// 
+			// break;
+	// }
+// 
+	// $block['content'] = $build;
+// 
+	// return $block;
+// }
+
+
+function ad2_roof_form( &$form  , &$form_state ,  $node  ){
+
+
+	global $user;
+
+	//variable_set('had_roof_min_defualt',20);
+
+	$min_per_day = variable_get('ad2_roof_min_defualt',20);
+
+
+	$n = date('t') - date('d') + 1;
+	$max = ($node->balance - $min_per_day *$n);
+	if( $max <= 0 ){
+		$max = 	round($node->balance  / $n , 2 );
+	} else {
+		$max = round($max , 2 );
+	}
+
+	if( $max < 0 ) $max = 0;
+
+
+	$form['#node'] 		= $node;
+	$form['#roof_max'] 	= $max;
+
+	// if( _hapisga_is_debug_ip()){
+		// tr( $max );
+	// }
+	$auto = db_query('select auto from ad2_roof where nid = :nid' , array(':nid' => $node->nid))->fetchField();
+
+	$form['fs'] = array(
+		'#type' => 'fieldset',
+		'#title' => '<h3>' .  t('תקציב: יעד יומי') . '</h3>',
+		'#prefix' => '<div id="had-roof-owner-results">',
+		'#suffix' => '</div>',
+	);
+
+	$form['fs']['help1'] = array(
+		'#markup' => t('יעד תקציב הפרסום שבחרת ליום זה'),
+	);
+
+	$form['fs']['roof'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Roof Today'),
+		'#default_value' => $node->ad2_roof,
+		'#description' => t('זהו הסכום אותך הינך מעוניין לנצל היום'),
+		'#required' => true,
+		'#size' => 4,
+		'#disabled' => $max < $min_per_day ? true : false ,
+	);
+
+
+
+	$form['fs']['auto'] = array(
+		'#type' => 'checkbox',
+		'#title' => t('יעד יומי אוטומטי'),
+		'#default_value' => $auto, //$node->roof,
+		'#description' => t('התקציב היומי יועדכן באופן אוטומטי בתחלית כל יום'),
+		'#size' => 4
+	);
+
+	$n = date('t') - date('d') + 1;
+	$roof = $node->balance / $n;
+	$roof = $roof < 0 ? 0 : round( $roof , 2 );
+
+	$form['fs']['auto_roof'] = array(
+		'#type' => 'hidden',
+		'#value' => $roof,
+	);
+
+	$form['fs']['submit'] = array(
+		'#type' => 'submit',
+		'#title' => t('Save'),
+		'#value' => t('Save'),
+		 // '#ajax' => array(
+     		 // 'callback' => 'ad2_roof_form_js',
+     		 // 'wrapper' => 'had-roof-owner-results',
+     		 // 'method' => 'replace',
+     		// // 'effect' => 'fade',
+   		 // ),
+	);
+
+	return $form;
+}
+
+
+function ad2_roof_form_validate( &$form  , &$form_state  ){
+
+	$node = $form['#node'];
+	$roof_max = $form['#roof_max'];
+	$min_per_day = variable_get('ad2_roof_min_defualt',20);
+
+	if( $roof_max >= $min_per_day ){
+
+		if( $form_state['values']['auto'] == 0 ){
+			if( $form_state['values']['roof'] > $roof_max ){
+				form_error($form['fs']['roof'] ,t('לא ניתן להכניס תקציב יומי גדול מהסכום למימוש יומי'));
+			}
+
+			$min = max(array($min_per_day,-1 * account_balance_spending_today($node->nid) ));
+			$min = round( $min , 2 );
+
+			if( $form_state['values']['roof'] < $min ){
+				form_error($form['fs']['roof'] ,t('לא ניתן להכניס סכום קטן מ @num' , array('@num' => $min)));
+			}
+		} else{
+			$original = db_query('select auto from ad2_roof where nid = :nid' , array(':nid' => $node->nid))->fetchField();
+			if( $original == 1 ){
+
+			} else {
+				// changed
+				$form_state['values']['roof'] = $form_state['values']['auto_roof'];
+				//$form['fs']['roof']['#default_value'] = $form_state['values']['auto_roof'];
+				$form['fs']['roof']['#value'] = $form_state['values']['auto_roof'];
+			}
+
+		}
+	}
+}
+
+
+function ad2_roof_form_js($form, $form_state){
+	return $form['fs'];
+}
+
+function ad2_roof_form_submit( $form  , &$form_state  ){
+
+	db_update('ad2_roof')
+		->condition('nid' , $form['#node']->nid )
+		->fields(array(
+			'roof' => $form_state['values']['roof'],
+			'auto' => $form_state['values']['auto'],
+		))
+		->execute()
+		;
+
+	drupal_set_message('הנתונים נשמרו בבסיס הנתונים');
+
+}
+
+function ad2_roof_sites_ajastment(){
+
+  $min_per_day = variable_get('ad2_roof_min_defualt',20);
+
+ 	$rows = db_query("SELECT * FROM node n join ad2_roof ar on ar.nid = n.nid where n.type = 'site' ")->fetchAll();
+	//tr( $rows );
+	//die();
+
+	foreach ($rows as $row ) {
+
+		$nid = $row->nid;
+		$balance = account_balance($nid);
+
+		$n = date('t') - date('d') + 1 ;
+
+		if( $row->auto){
+
+			$roof = round(  $balance / $n , 2 );
+
+			if( $roof < 0 )
+				$roof = 0;
+
+			db_update('ad2_roof')
+				->condition('nid' ,  $nid )
+				->fields(array(
+					'roof' => $roof,
+				))
+				->execute()
+				;
+		} else {
+
+			if( module_exists('ad2_roof_week') ){
+				$day = strtolower( date('l' , time() ) );
+				$day_value = $row->{$day};
+
+				if( $day_value > 0 ){
+					db_update('ad2_roof')
+						->condition('nid' , $row->nid )
+						->fields(array('roof'=>$day_value))
+						->execute()
+						;
+					$row->roof = $day_value;
+				}
+			}
+			$max = $balance - $min_per_day * $n;
+			$max = round($max , 2 );
+
+			if( $max <= 0 ){
+
+				$roof = round(  $balance / $n , 2 );
+
+				if( $roof < 0 )
+					$roof = 0;
+
+				db_update('ad2_roof')
+					->condition('nid' ,  $nid )
+					->fields(array(
+						'roof' => $roof,
+					))
+					->execute()
+					;
+			} else {
+				if( $row->roof > $max || $row->roof <= 0){
+					db_update('ad2_roof')
+					->condition('nid' ,  $nid )
+					->fields(array(
+						'roof' => $max,
+					))
+					->execute()
+					;
+					$roof = $max;
+				}
+			}
+
+
+		}
+
+	}
+
+ }
+
+function ad2_roof_cron(){
+
+	
+	$date = variable_get('ad2_roof_cron_date' , '20110714' );
+
+	if( date('Ymd') > $date  ){
+
+		ad2_roof_sites_ajastment();
+
+		watchdog('תקרה יומית' , 'daily cron run complete');
+		variable_set('ad2_roof_cron_date' , date('Ymd') );
+	}
+
+
+
+	/**
+	 * check if the site has reach the limit
+	 * if yes - then change its status to 'limit'
+	 *
+	 * a. get all sites
+	 * b. for each site - check the current limit for today aginst the done today
+	 */
+
+	//return;
+	
+	$q = db_select('ad2_roof' , 'ar');
+	$q->fields('ar' , array('nid' , 'roof'));
+	$rows = $q->execute()->fetchAll();
+	
+	//$rows = db_query("SELECT * FROM node n join ad2_roof ar on ar.nid = n.nid where n.type = 'site' ")->fetchAll();
+
+	foreach ($rows as $row  ) {
+
+		$speniding_today 	= account_balance_spending_today($row->nid);
+		$roof 				= $row->roof;
+
+		if( -1 * $speniding_today > $roof  ){
+
+			//$ads = db_query("select aid from ad2 where nid = :nid and adstatus = :adstatus and over = :over" , array(':nid' => $row->nid , ':adstatus' => 'active' , ':over' => 0) )->fetchCol();
+
+			$query = new EntityFieldQuery();
+			$query	->entityCondition('entity_type', 'ad2')
+					->propertyCondition('over', 0)
+					->propertyCondition('adstatus', 'active')
+					->fieldCondition(AD2_SITE_FIELD, 'nid', $row->nid )
+					->addMetaData('account', user_load(1))
+					; // run the query as user 1
+
+			$result = $query->execute();
+			$aids = isset($result['ad2']) ? array_keys($result['ad2']) : array();
+			
+			if( count($aids) > 0 ){
+
+				db_update('ad2')
+					->condition('aid' , $aids , 'IN')
+					->fields(array(
+						'over' => 1,
+					))
+					->execute()
+					;
+			}
+		} else {
+
+			//$ads = db_query("select aid from ads where nid = :nid and adstatus = :adstatus and over = :over" , array(':nid' => $row->nid , ':adstatus' => 'active', ':over' => 1) )->fetchCol();
+			
+			
+			$query = new EntityFieldQuery();
+			$query	->entityCondition('entity_type', 'ad2')
+					->propertyCondition('over', 1)
+					->propertyCondition('adstatus', 'active')
+					->fieldCondition(AD2_SITE_FIELD, 'nid', $row->nid )
+					->addMetaData('account', user_load(1))
+					; // run the query as user 1
+
+			$result = $query->execute();
+			$aids = isset($result['ad2']) ? array_keys($result['ad2']) : array();
+			
+			if( count($aids ) > 0 ){
+
+				db_update('ad2')
+					->condition('aid' , $aids , 'IN')
+					->fields(array(
+						'over' => 0,
+					))
+					->execute()
+					;
+
+			}
+		}
+
+	}
+
+}
+
+
+/**
+ * create a row in the ad_roof table
+ *
+ */
+function ad2_roof_node_insert($node){
+
+
+	if( $node->type == 'site'){
+
+		db_insert('ad_roof')
+			->fields(array(
+				'nid' 	=> $node->nid,
+				'roof'	=> 10,
+				'auto' 	=> 1,
+			))
+			->execute()
+			;
+
+	}
+
+}
+
+// load the auto as well
+
+function ad2_roof_node_load($nodes, $types){
+
+	static $roofs;
+
+	if( ! isset($roofs) ){
+		 $roofs = db_query('select nid, roof from ad2_roof')->fetchAllKeyed();
+	}
+
+	foreach ($nodes as $node ) {
+		if( $node->type == 'site' ){
+			$node->ad2_roof =  isset( $roofs[$node->nid]) ? $roofs[$node->nid] :  0;
+		}
+	}
+
+}
+
+function ad2_roof_node_delete($node){
+
+	if( $node->type == 'site' ){
+		db_delete('ad_roof')->condition('nid', $node->nid)->execute();
+	}
+}
+
+
+function ad2_roof_entity_presave($entity, $type){
+	
+	if( $type == 'ad2'){
+		
+		if( ! isset($entity->adstatus)){
+			$entity->adstatus = 'active';
+		}
+
+	    if ($entity->status != 1 && $entity->adstatus == 'active') {
+	      $entity->adstatus = 'expired';
+	    }
+		
+		
+        if ($entity->status == 1 && $entity->adstatus == 'expired') {
+          $entity->adstatus = 'active';
+        }
+		
+	}
+}

@@ -1,0 +1,9 @@
+name = ad2 Cron 
+description = "provide cron managment for ads."
+core = 7.x
+package = ad2
+
+dependencies[] = ad2
+
+#files[] = example.test
+#configure = admin/config/content/example

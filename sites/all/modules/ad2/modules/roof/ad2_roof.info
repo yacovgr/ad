@@ -1,0 +1,12 @@
+name = Ad2 Daily Roof
+description = "Provides Daily Limit for ads."
+core = 7.x
+package = ad2
+dependencies[] = hapisga
+dependencies[] = ad2
+dependencies[] = ad2_parent
+dependencies[] = account
+
+#dependencies[] = panels
+#files[] = example.test
+#configure = admin/config/content/example

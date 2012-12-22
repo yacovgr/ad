@@ -1,0 +1,978 @@
+<?php
+
+//require 'ad.controller.inc';
+
+// pull ads from service 
+// type(s), count, .....  ?
+
+
+// $ads = new AdService();  -with a certian service 
+// $ads->countViews($ad);
+// $ads->countClicks($ad);
+
+// $request - can be from block, page, web service
+// $request->types quantity , page etc.
+
+// $response->getAds();
+// $response->setAds($ads );
+// $response->count();
+// $response->reset();
+
+// $response = $ads->fetch( $request );
+// $ads->getTypes();
+// $ads->getSizes();
+// $ads->getViewModes();
+
+
+// $ads->click($ad);
+// $ads->view($ads);
+function ad( &$params , $response ){
+	
+	
+	//tr( module_implements('ad_selection_alter') );
+	
+	if( ! isset($params['quantity']))
+		$params['quantity'] = 10;
+	
+	if( ! isset($params['page']))
+		$params['page'] = 0;
+	
+	
+	$quantity 	= $params['quantity'];
+	$page	 	= $params['page'];
+	
+	$function 	= $params['function'];
+	
+	
+	if( $function !=  'ad' ){
+		$function($params , $response );
+	} else {
+		
+		$q = db_select('ad' , 'a');
+		$q->fields('a' , array('aid'));
+		if( isset($params['types']) && is_array($params['types']) && count($params['types'])){
+			$q->condition('type' , $params['types']);
+		}
+		
+		
+		$response->total = $q->countQuery()->execute()->fetchField();
+		
+		$q->range(0,$quantity);
+		$q->orderRandom();
+		$ids = $q->execute()->fetchCol();
+		
+		$response->ad_ids 	= $ids;
+	}
+	
+	
+	$ads = ad_load_multiple( $response->ad_ids );
+	
+	//tr( module_implements('ad_selection_alter') );
+	
+	module_invoke_all('ad_selection_alter' , $ads , $params , $response );
+	
+	return $ads;
+	
+}
+
+function _ad_ad_selection_alter($ads , $params , $response ){
+
+	//tr($params);
+	
+	// $group = $params['group'];
+	// foreach ($ads as $ad) {
+		// $ad->block_id = $group;
+	// }
+// 	
+	// $ad_nids = &drupal_static('ad_nids' , array());
+	// foreach ($ads as $ad ) {
+		// if( $ad->nid)
+			// $ad_nids[$delta][] = $ad->nid;
+	// }
+	
+}
+
+
+function ad_ad_selection_info(){
+	return array(
+		'ad' => array(
+			'title' => 'ad',
+		) 
+	);
+}
+/**
+ * Implements hook_entity_info().
+ */
+function ad_entity_info() {
+  $return = array(
+    'ad' => array(
+      'label' => t('Ad'),
+      'entity class' => 'Ad',
+      'controller class' => 'AdController',
+      'base table' => 'ad',
+      'fieldable' => TRUE,
+      'entity keys' => array(
+        'id' => 'aid',
+        'bundle' => 'type',
+      ),
+      'bundle keys' => array(
+        'bundle' => 'type',
+      ),
+      'bundles' => array(),
+      'load hook' => 'ad_load',
+      'view modes' => array(
+        'full' => array(
+          'label' => t('Default'),
+          'custom settings' => TRUE,
+        ),
+        'teaser' => array(
+          'label' => t('Teaser'),
+          'custom settings' => TRUE,
+        ),
+      ),
+      'label callback' => 'entity_class_label',
+      'uri callback' => 'entity_class_uri',
+      'module' => 'ad',
+      'permission labels' => array(
+        'singular' => t('Ad'),
+        'plural' => t('Ads'),
+      ),
+      'access callback' => 'ad_access',
+    ),
+  );
+  $return['ad_type'] = array(
+    'label' => t('Ad Type'),
+    'entity class' => 'AdType',
+    'controller class' => 'AdTypeController',
+    'base table' => 'ad_type',
+    'fieldable' => FALSE,
+    'bundle of' => 'ad',
+    'exportable' => TRUE,
+    'entity keys' => array(
+      'id' => 'id',
+      'name' => 'type',
+      'label' => 'label',
+    ),
+    'module' => 'ad',
+    // Enable the entity API's admin UI.
+    'admin ui' => array(
+      'path' => 'admin/structure/ad-types',
+      'file' => 'ad.admin.inc',
+      'controller class' => 'AdTypeUIController',
+    ),
+    'access callback' => 'ad_type_access',
+  );
+
+  return $return;
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function ad_entity_info_alter(&$entity_info) {
+	//tr( $entity_info['contacts'] );
+	//die();
+	
+	//$entity_info['contacts']['schema_fields_sql']['base table'][] = 'phone';
+	
+  foreach (ad_types() as $type => $info) {
+    $entity_info['ad']['bundles'][$type] = array(
+      'label' => $info->label,
+      'admin' => array(
+        'path' => 'admin/structure/ad-types/manage/%ad_type',
+        'real path' => 'admin/structure/ad-types/manage/' . $type,
+        'bundle argument' => 4,
+      ),
+    );
+  }
+  
+  $entity_info['ad']['view modes']['ad'] = array(
+    'label' => t('Ad'),
+    'custom settings' => TRUE,
+  ); 
+}
+
+
+/**
+ * Implements hook_menu().
+ */
+function ad_menu() {
+  $items = array();
+
+  $items['ad/add'] = array(
+    'title' => 'Add Ad',
+    'page callback' => 'ad_admin_add_page',
+    'access arguments' => array('administer ad entities'),
+    'file' => 'ad.admin.inc',
+    'type' => MENU_LOCAL_ACTION,
+    'tab_parent' => 'ad',
+    'tab_root' => 'ad',
+  );
+
+  $task_uri = 'ad/%ad';
+  $task_uri_argument_position = 1;
+
+  $items[$task_uri] = array(
+    'title callback' => 'entity_label',
+    'title arguments' => array('ad', $task_uri_argument_position),
+    'page callback' => 'ad_view',
+    'page arguments' => array($task_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('view', 'ad', $task_uri_argument_position),
+    'file' => 'ad.pages.inc',
+  );
+
+  $items[$task_uri . '/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items[$task_uri . '/delete'] = array(
+    'title' => 'Delete contact',
+    'title callback' => 'ad_label',
+    'title arguments' => array($task_uri_argument_position),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad_delete_form', $task_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'ad', $task_uri_argument_position),
+    'file' => 'ad.admin.inc',
+  );
+
+  $items[$task_uri . '/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad_form', $task_uri_argument_position),
+    'access callback' => 'entity_access',
+    'access arguments' => array('edit', 'ad', $task_uri_argument_position),
+    'file' => 'ad.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+  );
+
+  foreach (ad_types() as $type => $info) {
+    $items['ad/add/' . $type] = array(
+      'title' => 'Add contact',
+      'page callback' => 'ad_add',
+      'page arguments' => array(2),
+      'access callback' => 'entity_access',
+      'access arguments' => array('create', 'ad', $type),
+      'file' => 'ad.admin.inc',
+    );
+  }
+
+  $items['admin/structure/ad-types/%ad_type/delete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad_type_form_delete_confirm', 4),
+    'access arguments' => array('administer ad types'),
+    'weight' => 1,
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'ad.admin.inc',
+  );
+
+
+	$items['admin/config/ad'] = array(
+		'title' => 'ad Confige',
+    	'page callback' => 'ad_config_page',
+    	'access arguments' => array('administer ad types'),
+    	'weight' => 1,
+    	'type' => MENU_NORMAL_ITEM,
+    	'file' => 'ad.admin.inc',
+	);
+	
+
+	$items['admin/reports/ad'] = array(
+		'title' => 'ad Reports',
+    	'page callback' => 'ad_report_page',
+    	'access arguments' => array('administer ad types'),
+    	'weight' => 1,
+    	'type' => MENU_NORMAL_ITEM,
+    	'file' => 'ad.pages.inc',
+	);
+	
+
+	$items['admin/reports/ad/default'] = array(
+		'title' => 'ad Reports',
+    	'weight' => 1,
+    	'type' => MENU_DEFAULT_LOCAL_TASK,
+	);
+	
+	
+	
+  $items['admin/structure/block/add-ad-block'] = array(
+    'title' => 'Add Ads Block',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad_add_block_form'),
+    'access arguments' => array( 'administer blocks'),
+    'type' => MENU_LOCAL_ACTION,
+    'file' => 'ad.admin.inc',
+    'weight' => 3,
+  );
+
+	
+  $items['admin/config/ad/blocks'] = array(
+    'title' => 'Ads Blocks',
+    'page callback' => 'ad_page_blocks',
+    //'page arguments' => array('ads_config_form'),
+    'access arguments' => array( 'administer advertisements'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+    'file' => 'ad.admin.inc',
+  );
+  
+	
+	
+  $items['ad/iframe'] = array(
+    'title' => 'Ads Iframe Callback',
+    'page callback' => 'ad_iframe',
+    //'page arguments' => array('ads_config_form'),
+    'access arguments' => array('access content'),  // maybe here acccess ads
+    'type' => MENU_CALLBACK,
+    'weight' => 2,
+    'delivery callback' => 'ad_iframe_delivery_callback', 
+    //'file' => 'ad.admin.inc',
+  );
+  //delivery callback
+	
+	
+  $items['ad/jquery'] = array(
+    'title' => 'Ads JQuery Callback',
+    'page callback' => 'ad_jquery',
+    //'page arguments' => array('ads_config_form'),
+    'access arguments' => array('access content'),  // maybe here acccess ads
+    'type' => MENU_CALLBACK,
+    'weight' => 2,
+    'delivery callback' => 'ad_iframe_delivery_callback', 
+    //'delivery callback' => 'ajax_deliver', 
+    //'file' => 'ad.admin.inc',
+  );
+  //delivery callback
+	
+	
+	
+  $items['ad/redirect'] = array(
+    'title' => 'Ads JQuery Callback',
+    'page callback' => 'ad_redirect',
+    //'page arguments' => array('ads_config_form'),
+    'access arguments' => array('access content'),  // maybe here acccess ads
+    'type' => MENU_CALLBACK,
+    //'weight' => 2,
+    //'delivery callback' => 'ad_iframe_delivery_callback', 
+    //'delivery callback' => 'ajax_deliver', 
+    //'file' => 'ad.admin.inc',
+  );
+  //delivery callback
+	
+	
+	
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function ad_permission() {
+  $permissions = array(
+    'administer ad types' => array(
+      'title' => t('Administer ad types'),
+      'description' => t('Allows users to configure ad types and their fields.'),
+      'restrict access' => TRUE,
+    ),
+    'create ad entities' => array(
+      'title' => t('Create ads'),
+      'description' => t('Allows users to create ads.'),
+      'restrict access' => TRUE,
+    ),
+    'view ad entities' => array(
+      'title' => t('View Ads'),
+      'description' => t('Allows users to view ads.'),
+      'restrict access' => TRUE,
+    ),
+    'edit any ad entities' => array(
+      'title' => t('Edit any ads'),
+      'description' => t('Allows users to edit any ads.'),
+      'restrict access' => TRUE,
+    ),
+    'edit own ad entities' => array(
+      'title' => t('Edit own ads'),
+      'description' => t('Allows users to edit own ads.'),
+      'restrict access' => TRUE,
+    ),
+  );
+
+  return $permissions;
+}
+
+
+/**
+ * Implements hook_entity_property_info_alter().
+ */
+function ad_entity_property_info_alter(&$info) {
+  $properties = &$info['ad']['properties'];
+  $properties['created'] = array(
+    'label' => t("Date created"),
+    'type' => 'date',
+    'description' => t("The date the node was posted."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer nodes',
+    'schema field' => 'created',
+  );
+  $properties['changed'] = array(
+    'label' => t("Date changed"),
+    'type' => 'date',
+    'schema field' => 'changed',
+    'description' => t("The date the node was most recently updated."),
+  );
+  $properties['uid'] = array(
+    'label' => t("Author"),
+    'type' => 'user',
+    'description' => t("The author of the task."),
+    'setter callback' => 'entity_property_verbatim_set',
+    'setter permission' => 'administer ads entities',
+    'required' => TRUE,
+    'schema field' => 'uid',
+  );
+  
+  // $properties['phone'] = array(
+    // 'label' => t("Phone"),
+    // 'type' => 'text',
+    // 'description' => t("Phone Number."),
+    // //'setter callback' => 'entity_property_verbatim_set',
+    // //'setter permission' => 'administer ads entities',
+    // //'required' => TRUE,
+    // 'schema field' => 'phone',
+  // );
+  
+}
+
+
+/*******************************************************************************
+ ********************************* Task API's **********************************
+ ******************************************************************************/
+
+/**
+ * Access callback for task.
+ */
+function ad_access($op, $ad, $account = NULL, $entity_type = NULL) {
+  global $user;
+
+  if (!isset($account)) {
+    $account = $user;
+  }
+  switch ($op) {
+    case 'create':
+      return user_access('administer ad entities', $account)
+          || user_access('create ad entities', $account);
+    case 'view':
+      return user_access('administer ad entities', $account)
+          || user_access('view ad entities', $account);
+    case 'edit':
+      return user_access('administer ad entities')
+          || user_access('edit any ad entities')
+          || (user_access('edit own ad entities') && ($ad->uid == $account->uid));
+  }
+}
+
+/**
+ * Load a task.
+ */
+function ad_load($aid, $reset = FALSE) {
+  $tasks = ad_load_multiple(array($aid), array(), $reset);
+  return reset($tasks);
+}
+
+/**
+ * Load multiple tasks based on certain conditions.
+ */
+function ad_load_multiple($aids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('ad', $aids, $conditions, $reset);
+}
+
+/**
+ * Save task.
+ */
+function ad_save($contact) {
+  entity_save('ad', $contact);
+}
+
+/**
+ * Delete single task.
+ */
+function ad_delete($task) {
+  entity_delete('ad', entity_id('ad' ,$task));
+}
+
+/**
+ * Delete multiple tasks.
+ */
+function ad_delete_multiple($task_ids) {
+  entity_delete_multiple('ad', $task_ids);
+}
+
+
+/*******************************************************************************
+ ****************************** Task Type API's ********************************
+ ******************************************************************************/
+
+/**
+ * Access callback for task Type.
+ */
+function ad_type_access($op, $entity = NULL) {
+  return user_access('administer ad types');
+}
+
+/**
+ * Load task Type.
+ */
+function ad_type_load($task_type) {
+  return ad_types($task_type);
+}
+
+/**
+ * List of task Types.
+ */
+function ad_types($type_name = NULL) {
+  $types = entity_load_multiple_by_name('ad_type', isset($type_name) ? array($type_name) : FALSE);
+  return isset($type_name) ? reset($types) : $types;
+}
+
+/**
+ * Save task type entity.
+ */
+function ad_type_save($task_type) {
+  entity_save('ad_type', $task_type);
+}
+
+/**
+ * Delete single case type.
+ */
+function ad_type_delete($task_type) {
+  entity_delete('ad_type', entity_id('ad_type' ,$task_type));
+}
+
+/**
+ * Delete multiple case types.
+ */
+function ad_type_delete_multiple($task_type_ids) {
+  entity_delete_multiple('ad_type', $task_type_ids);
+}
+
+/**
+  * Implements hook_views_api().
+  */
+function ad_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'ad'),
+  );
+}
+
+
+
+function ad_get_block($delta){
+	// this should be loaded once
+	$custom_block = db_query("SELECT * FROM ad_block WHERE delta = :delta", array(':delta' => $delta))->fetchObject(); //->fetchAssoc();
+	return $custom_block;
+}
+
+
+function ad_block_info(){
+
+	$blocks = array();
+
+	$result = db_query('SELECT delta, info FROM ad_block ORDER BY info'); 
+  	foreach ($result as $block) {
+	    $blocks[$block->delta]['info'] = t('Ads Module') . ': ' . $block->info;
+	    
+	    // Not worth caching. maybe it is worth caching
+	    $blocks[$block->delta]['cache'] = DRUPAL_NO_CACHE;
+  	}
+	return $blocks;
+
+}
+
+function ad_block_view($delta = ''){
+
+	$block = ad_get_block( $delta );
+	
+	//tr( $block );
+	
+	//$display = 'jquery';
+	
+	switch ($block->display) {
+		case 'raw':
+			// get sds
+			// display ads 
+			
+			$content['ads'] =   array('#markup' => 'ads display=raw' , '#type' => 'markup');
+			
+			$aids = ad_select($block->quantity);
+			$ads = ad_load_multiple($aids);
+			$content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
+			break;
+		
+		case 'jquery':
+			
+			//return "\n<div class=\"advertisement group-$group\" id=\"group-id-$id\">\n <script type=\"text/javascript\">\n//<![CDATA[\n  $(document).ready(function(){ jQuery(\"div#group-id-$id\").load(\"$display\"); });\n //]]>\n </script>\n</div>\n";
+			
+			//$content['ads'] =  array('#markup' => 'ads display=jquery' , '#type' => 'markup');
+			// http://ad.e-kugel.org/ad/jquery
+			$load_url = url('/ad/jquery' , array(
+				'absolute' => true,
+				'query' => array('quantity' => $block->quantity)
+			));
+			$content['ads'] = array(
+				'#type' => 'html_tag',
+				'#tag' => 'div',
+				'#value' => "<div id='aaa-aaa'>aaa aaa aaa</div><script type=\"text/javascript\">\n//<![CDATA[\n (function ($) { $(document).ready(function(){ jQuery(\"div#ad-jquery-first\").load(\"$load_url\"); });})(jQuery);\n //]]>\n </script>",
+				'#attributes' => array(
+					
+					'width' => '100%', 
+					'height' => '80px', 
+					'class' => 'ad-jquery',
+					'id' => 'ad-jquery-first',
+				),
+				
+			);
+			break;
+		
+		case 'iframe':
+			
+			$load_url = url('/ad/iframe' , array(
+				'absolute' => true,
+				'query' => array('quantity' => $block->quantity)
+			));
+			
+			
+			$content['ads'] =  array(
+				'#type' => 'html_tag',
+				'#tag' => 'iframe',
+				'#value' => '',
+				'#attributes' => array(
+					'src' => $load_url,
+					'width' => '100%', 
+					//'width' => '70px', 
+					'height' => '400px', 
+					//'scrolling' => 'no',
+					'scrolling' => 'auto',
+					'frameborder' => 0,
+					'class' => 'ad-iframe',
+				)
+			);
+			
+			
+			
+			break;
+		
+		default:
+			
+			break;
+	}
+	
+	
+	
+	//tr($block);
+	//drupal_alter('ad2_blocks_params' , $block);
+	
+	//tr( $block );
+	// $view_mode = $block->view_mode;
+// 	
+	// $qp = array(
+		// 'quantity' 	=> $block->quantity,
+		// 'group' 	=> $block->delta,
+		// 'types'		=> explode(',',$block->types ),
+		// 'function'	=> $block->selection,
+	// );
+// 	
+	// $response = new stdClass();
+	// $response->ad2_ids 	= array();
+	// $response->total 	= 0;
+// 	
+  	// //tr( $qp );
+// 	
+	// $ads = ad2($qp , $response );
+// 	
+	// //tr( $response );
+// 	
+	// // $ad2_nids = &drupal_static('ad2_nids' , array());
+	// // foreach ($ads as $ad ) {
+		// // if( $ad->nid)
+			// // $ad2_nids[$delta][] = $ad->nid;
+	// // }
+// 	
+// 	
+	// //tr( $ads );
+// 	
+	// $content['ads'] = entity_view('ad2', $ads, $view_mode );
+	// $content['pagination'] = array(
+		// '#markup' => 'pagination here',
+	// );
+	
+	$return['content'] = $content;
+	return $return;
+}
+
+
+function ad_block_configure($delta = ''){
+
+	
+	
+	if ($delta) {
+    	$custom_block = ad_get_block($delta);
+  	} else {
+    	$custom_block = array();
+  	}
+
+	//tr( $custom_block );
+
+	/**
+	 * if delta = 0 then it means the block in being created
+	 */
+
+	$form = array();
+
+	$form['ad_info'] = array(
+		'#type' => 'textfield',
+		'#title' => 'כותרת בדף בלוקים',
+		'#required' => true,
+		//'#default_value' => isset($custom_block['info']) ? $custom_block['info'] : '',
+		'#default_value' => isset($custom_block->info) ? $custom_block->info : '',
+	);
+
+	$form['ad_quantity'] = array(
+		'#type' => 'select',
+		'#title' => 'מספר המודעות להציג',
+		'#default_value' => isset($custom_block->quantity) ? $custom_block->quantity : 2, // variable_get( "ad_block_{$delta}_ads_number" , 10),
+		'#options' => drupal_map_assoc(array(1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25, 30)),
+	);
+
+    // Provide hook for ad_display_TYPE modules to set display TYPE.
+  	$display_options = array( 'jquery' => t('jQuery'),  'raw' => t('Raw') ,'iframe' => t('IFrame') );
+	$form['ad_display'] = array(
+		'#type' => 'radios',
+		'#title' => 'שיטת תצוגת הבלוק',
+		'#default_value' => isset($custom_block->display) ? $custom_block->display : 'jquery', //variable_get("ad_block_{$delta}_ads_display", 'jquery'),
+		'#options' => $display_options,
+		'#description' => t('This setting configures the default method for displaying advertisements on your website.  It is possible to override this setting when making direct calls to ad(), as described in the documentation.  Using the JavaScript, jQuery, and IFrame display methods allows you to display random ads and track impressions even on cached pages.  When using the Raw display method together with Drupal\'s page cache, impressions will be properly tracked but advertisements will only change when the page cache is updated.'),
+	);
+
+
+	$form['ad_view_mode'] = array(
+		'#type' => 'radios',
+		'#title' => t('View Mode'),
+		'#default_value' =>isset($custom_block->view_mode) ? $custom_block->view_mode : 'teaser',// variable_get("ad_block_{$delta}_ads_view_mode", 'teaser'),
+		'#options' => array('a' => 'a'),
+		//'#description' => $description,
+	);
+
+	$options = array();
+
+	//$names = node_type_get_names();
+	foreach ( ad_types() as $key => $type ) {
+		//tr( $key );
+		//tr( $name );
+		//$options[$key] = $name;
+		$options[$key] = $type->label;
+		//get_class_methods($type);
+	}
+
+	//die();
+	
+	$form['ad_types'] = array(
+		'#type' => 'checkboxes',
+		'#title' => 'סוגי מודעות',
+		'#default_value' => isset($custom_block->types) ? explode(',',$custom_block->types) : array(), // variable_get("ad_block_{$delta}_ads_type", array()),
+		'#options' => $options,
+		'#description' => 'here decription',
+	);
+
+	$pagination_options = array(
+		'none' => 'ללא',
+		'mini' => 'דפדוף מינימלי',
+	);
+
+	$form['ad_paginator'] = array(
+		'#type' => 'radios',
+		'#title' => 'דפדוף',
+		'#options' => $pagination_options,
+		'#default_value' => isset($custom_block->paginator) ? $custom_block->paginator : 'none', // variable_get("ad_block_{$delta}_ads_paginator", 'none'),
+	);
+
+	$selection_options = array();
+
+	$modules = module_implements('ad_selection_info');
+	//tr( $modules );
+
+	foreach ( $modules as $module ){
+		$options = module_invoke($module,'ad_selection_info');
+		foreach ($options as $key => $info ) {
+			$selection_options[$key] = $info['title'];
+		}
+	}
+	//tr( $selection_options );
+
+	$form['ad_selection'] = array(
+		'#type' => 'radios',
+		'#title' => 'פונקצית בחירת המודעות',
+		'#options' => $selection_options ,
+		'#default_value' => isset($custom_block->selection) ? $custom_block->selection : null, // variable_get("ad_block_{$delta}_ads_selection", 'ads'),
+	);
+	/**
+	 * here is extention point
+	 */
+
+
+  $form['ad_taxonomy'] = array(
+  	'#type' => 'fieldset',
+  	'#title' => 'קטגוריות',
+  	'#collapsible' => true,
+  	'#collapsed' => true,
+  );
+
+  $terms = array();
+  $tree = taxonomy_get_tree(1);
+  foreach ($tree as $t ){
+  	$terms[$t->tid] = str_repeat('-', $t->depth) . $t->name;
+  }
+
+  $form['ad_taxonomy']['ad_tids'] = array(
+  	'#type' => 'checkboxes',
+  	'#title' => 'קטגוריות',
+  	'#options' => $terms,
+  	//'#default_value' => isset($custom_block['tids']) ? explode(',',$custom_block['tids']) : array(),
+  );
+
+
+	return $form;
+}
+
+
+function ad_block_save($delta = '', $edit = array()) {
+
+	$fields = array();
+
+	foreach ($edit as $k => $v ) {
+		if( substr($k, 0 , 3) == 'ad_' ){
+			$key = substr($k, 3);
+			$fields[$key] = $v;
+		}
+	}
+
+	$types = array();
+	foreach ($fields['types'] as $k => $v ) {
+		if( $v )
+			$types[] = $k;
+	}
+	$fields['types'] = implode(',',$types);
+
+	$tids = array();
+	foreach ($fields['tids'] as $k => $v ) {
+		if( $v )
+			$tids[] = $k;
+	}
+	sort($tids);
+	$fields['tids'] = implode(',',$tids);
+
+	db_update('ad_block')
+	    ->fields($fields)
+	    ->condition('delta', $delta)
+	    ->execute();
+
+}
+
+
+
+function ad_select($quantity){
+	
+	
+	$q = db_select('ad' , 'a');
+	$q->fields('a' , array('aid'));
+	$q->orderRandom();
+	//$q->range(0,$block->quantity);
+	$q->range(0,$quantity);
+	
+	$aids = $q->execute()->fetchCol();
+	
+	return $aids;
+}
+
+
+
+function ad_iframe(){
+	
+	
+	$quantity = $_GET['quantity'];
+	
+	$aids = ad_select($quantity); // $q->execute()->fetchCol();
+	 
+	$ads = ad_load_multiple($aids);
+	$content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
+		
+	return drupal_render($content);
+	
+}
+
+function ad_iframe_delivery_callback($page_callback_result){
+	
+	print $page_callback_result;
+	//print 'here iframe delivery'; //$page_callback_result;
+}
+
+
+
+
+function ad_jquery(){
+	
+	$quantity = $_GET['quantity'];
+	
+	$aids = ad_select($quantity);
+	
+	 
+	$ads = ad_load_multiple($aids);
+	$content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
+			
+			
+	$d = array(
+		'#markup' => 'here jquery response',
+		'#type' => 'markup',
+	);
+	
+	return drupal_render($content);
+
+}
+
+
+function ad_theme(){
+  $theme = array();
+
+  $theme['ad'] = 
+  array(
+    'render element' => 'elements',
+    'template' => 'ad'
+  );
+
+  return $theme;
+}
+
+function ad_redirect(){
+	
+	
+	$aid = $_GET['aid'];
+	
+	
+	// here we log the click and then redirect to whereever
+	$ad = ad_load($aid);
+	
+	$url = $ad->url;
+	$goto = $url;
+	
+	if( $url == '' ||  $url == '<self>')
+		$goto = 'ad/' . $aid;
+	
+	
+	//tr( $ad );
+	//die();
+	drupal_goto($goto);
+}
+

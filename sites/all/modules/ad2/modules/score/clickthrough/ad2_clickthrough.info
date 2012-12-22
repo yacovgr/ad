@@ -1,0 +1,15 @@
+name = Ad2 clickthrough Scoring
+description = "allows for clickthrough ad ranking ."
+core = 7.x
+package = ad2 scoring
+dependencies[] = ad2
+dependencies[] = ad2_score
+
+#stylesheets[all][] = had.css
+
+#dependencies[] = panels
+#files[] = example.test
+#configure = admin/config/content/example
+
+;version = "7.x-1.x-dev"
+;core = "7.x"

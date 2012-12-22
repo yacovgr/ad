@@ -1,0 +1,15 @@
+name = Ad2 Log
+description = provieds view count system for ads
+package = Ad2
+
+core = 7.x
+
+
+dependencies[] = ad2
+dependencies[] = ad2_parent
+dependencies[] = ad2_statistic
+dependencies[] = account
+dependencies[] = ad2_clickprice
+
+
+;files[] = ad2.controller.inc

@@ -1,0 +1,101 @@
+<?
+
+
+/**
+ * todo: create a settings form to select which field hold the images to select from 
+ */
+function ad2_image_parent_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element){
+	
+	$base = $element;
+
+	$ad2 = $form['#entity'];
+	
+	// tr( $delta );
+	// tr( $items );
+	 
+	// tr( array_keys($element) );
+	// tr( $element['#field_name'] );
+	// tr( $element['#columns'] );
+	// tr( $element['#language'] );
+	
+	if( isset($ad2->ad_parent) ){		
+		$bank = node_load( $ad2->ad_parent->field_galleries['und'][0]['nid']);
+	} elseif ( isset($_GET['site']) ){
+
+		$nid = $_GET['site'];
+		$site = node_load( $nid );
+		$bank = node_load( $site->field_galleries['und'][0]['nid']);
+	}
+  
+	$options = array();
+
+	foreach ($bank->field_image['und'] as  $image ) {
+		$fid = $image['fid'];
+		$options[$fid] = theme('image_style' , array('style_name' => 'thumbnail' , 'path' => $image['uri'] ) );
+	}
+		
+    $element['fid'] = array(
+      '#type' => 'radios',
+      '#options' => $options,
+      '#default_value' => isset($items[$delta]['fid']) ? $items[$delta]['fid'] : NULL,
+    ) + $base;
+	
+	return $element;
+}
+
+
+
+function ad2_image_parent_field_widget_info(){
+	
+	return array(
+    'ad2_image_parent' => array(
+      'label' => t('Parent Image Selection'), 
+      'field types' => array('image'), 
+      'settings' => array('size' => 60), 
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_DEFAULT, 
+        'default value' => FIELD_BEHAVIOR_DEFAULT,
+      ),
+    )
+    
+    
+  );
+}
+
+
+function ad2_image_parent_preprocess_field(&$variables, $hook) {
+
+	global $user;
+
+	//tr($variables['element']['#field_name']);
+
+
+	if( $variables['element']['#field_name'] == AD2_IMAGE_FIELD &&
+			$variables['element']['#view_mode'] != 'full'
+		){
+
+		//tr( array_keys($variables['element']));
+		
+		 $ad = $variables['element']['#object'];
+		 $site = $ad->ad_parent;
+		 
+		 
+// 
+		// $options = array('query' => array(
+			// 'a' => $ad->nid,
+			// 'g' => $ad->adgroup,
+		// ));
+// 
+		// if( isset($ad->batch_id) && $ad->batch_id ){
+			// $options['query']['b'] = $ad->batch_id;
+		// }
+// 
+		 $variables['items'][0]['#path']['path'] = 'node/' . $site->nid;
+		 //$variables['items'][0]['#path']['options'] = $options;
+
+	}
+
+
+}
+
+

@@ -1,0 +1,5 @@
+.crossed{ text-decoration:line-through; }
+.readonly{ background-color:white; text-decoration:line-through;  }
+.grey{ background-color:#dedede; }
+.autobid{  outline:2px solid #aeaeae;  padding:2px;  }
+.auto-manual{  outline:2px solid #aeaeae;  padding:2px;  }

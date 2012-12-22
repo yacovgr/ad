@@ -1,0 +1,11 @@
+name = Ad2 Statistics
+description = provieds view count system for ads
+package = Ad2
+
+core = 7.x
+
+
+dependencies[] = ad2
+
+
+;files[] = ad2.controller.inc

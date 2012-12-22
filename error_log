@@ -1,0 +1,36 @@
+[15-Nov-2012 15:18:34] PHP Fatal error:  Class name must be a valid object or a string in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 15:19:47] PHP Fatal error:  Class name must be a valid object or a string in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:18:31] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:20:08] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:21:18] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:21:49] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:22:10] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:22:40] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:23:52] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:24:02] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:24:14] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:24:21] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:24:27] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:25:28] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:25:30] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:25:33] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:29:03] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:29:06] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:29:30] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:31:02] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:31:09] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:32:29] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:35:23] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:35:28] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:37:32] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:37:49] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:38:50] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 16:39:28] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 18:03:11] PHP Fatal error:  Class 'AdTypeController' not found in /home/dkugel/public_html/ad/includes/common.inc on line 7749
+[15-Nov-2012 18:22:18] PHP Fatal error:  Call to undefined function  ad_type_get_types() in /home/dkugel/public_html/ad/sites/all/modules/ad_generate/ad_generate.module on line 66
+[15-Nov-2012 18:24:28] PHP Fatal error:  Call to undefined function  dmp() in /home/dkugel/public_html/ad/sites/all/modules/ad_generate/ad_generate.module on line 67
+[18-Nov-2012 23:03:26] PHP Fatal error:  Call to undefined function  had_get_view_mode_options() in /home/dkugel/public_html/ad/sites/all/modules/ad/ad.module on line 571
+[18-Nov-2012 23:20:26] PHP Fatal error:  Call to undefined function  ad_blocks_get_block() in /home/dkugel/public_html/ad/sites/all/modules/ad/ad.module on line 528
+[19-Nov-2012 08:56:50] PHP Fatal error:  Cannot use object of type stdClass as array in /home/dkugel/public_html/ad/sites/all/modules/ad/ad.module on line 592
+[20-Nov-2012 16:25:24] PHP Fatal error:  Cannot use object of type stdClass as array in /home/dkugel/public_html/ad/sites/all/modules/ad/ad.module on line 636
+[21-Nov-2012 16:36:11] PHP Fatal error:  Call to undefined method SelectQuery::random() in /home/dkugel/public_html/ad/sites/all/modules/ad/ad.module on line 589

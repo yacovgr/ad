@@ -1,0 +1,12 @@
+name = Ad2 Exclusive Scoreing
+description = "allows for exclusive site ad scoring. boost the score of exclusive sites"
+core = 7.x
+package = ad2 scoring
+;;dependencies[] = had
+dependencies[] = ad2_score
+
+files[] = ad2_exclusive.module
+
+#configure = admin/config/content/example
+#version = "7.x-1.x-dev"
+#core = "7.x"

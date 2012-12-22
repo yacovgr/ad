@@ -1,0 +1,254 @@
+<?php
+
+
+
+/**
+ * Implements hook_menu().
+ */
+function ad_generate_menu() {
+  $items = array();
+
+  
+  $items['admin/config/ad/generate/ads'] = array(
+    'title' => 'Generate content',
+    'description' => 'Generate a given number of nodes and comments. Optionally delete current items.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ad_generate_ads_form'),
+    'access arguments' => array('administer nodes'),
+  );
+  
+  return $items;
+}
+
+
+function ad_generate_ads($form_state) {
+	
+	//tr($form_state['values']);
+	//die();
+	
+  if (!empty($form_state['values']['kill_ads'])) {
+    ad_generate_ads_kill($form_state['values']);
+  }
+
+  if (count($form_state['values']['ad_types'])) {
+    // Generate nodes.
+    devel_generate_content_pre_node($form_state['values']);
+    $start = time();
+    for ($i = 1; $i <= $form_state['values']['num_ads']; $i++) {
+      ad_generate_content_add_ad($form_state['values']);
+      // if (function_exists('drush_log') && $i % drush_get_option('feedback', 1000) == 0) {
+        // $now = time();
+        // drush_log(dt('Completed !feedback nodes (!rate nodes/min)', array('!feedback' => drush_get_option('feedback', 1000), '!rate' => (drush_get_option('feedback', 1000)*60)/($now-$start))), 'ok');
+        // $start = $now;
+      // }
+    }
+  }
+
+  //devel_generate_set_message(format_plural($form_state['values']['num_nodes'], '1 node created.', 'Finished creating @count nodes'));
+}
+
+function ad_generate_ads_kill($values) {
+  $results = db_select('ad', 'a')
+              ->fields('a', array('aid'))
+              ->condition('type', $values['ad_types'], 'IN')
+              ->execute();
+  foreach ($results as $result) {
+    $aids[] = $result->aid;
+  }
+
+  if (!empty($aids)) {
+    ad_delete_multiple($aids);
+    drupal_set_message(t('Deleted %count ads.', array('%count' => count($aids))));
+  }
+}
+
+/**
+ * Create one node. Used by both batch and non-batch code branches.
+ *
+ * @param $num
+ *   array of options obtained from devel_generate_content_form.
+ */
+function ad_generate_content_add_ad(&$results) {
+  $ad = new stdClass();
+  $ad->aid = NULL;
+
+  // Insert new data:
+  $ad->type = array_rand($results['ad_types']);
+  
+  //node_object_prepare($node);
+  
+  $users = $results['users'];
+  $ad->uid = $users[array_rand($users)];
+  //$type = node_type_get_type($node);
+  //$node->title = $type->has_title ? devel_create_greeking(mt_rand(2, $results['title_length']), TRUE) : '';
+  
+  $ad->title = devel_create_greeking(mt_rand(2, $results['title_length']), TRUE);
+  
+  //$node->revision = mt_rand(0,1);
+  //$node->promote = mt_rand(0, 1);
+  // Avoid NOTICE.
+  if (!isset($results['time_range'])) {
+    $results['time_range'] = 0;
+  }
+
+  //devel_generate_set_language($results, $ad);
+
+  $ad->created = REQUEST_TIME - mt_rand(0, $results['time_range']);
+
+  // A flag to let hook_nodeapi() implementations know that this is a generated node.
+  $ad->devel_generate = $results;
+
+  // Populate all core fields on behalf of field.module
+  module_load_include('inc', 'devel_generate', 'devel_generate.fields');
+  devel_generate_fields($ad, 'ad', $ad->type);
+
+  // See devel_generate_nodeapi() for actions that happen before and after this save.
+  ad_save($ad);
+}
+
+
+
+/**
+ * Generates nodes using FormAPI.
+ */
+function ad_generate_ads_form() {
+  $options = array();
+
+  if (module_exists('content')) {
+    $types = content_types();
+    foreach ($types as $type) {
+      $warn = '';
+      if (count($type['fields'])) {
+        $warn = t('. This type contains CCK fields which will only be populated by fields that implement the content_generate hook.');
+      }
+      $options[$type['type']] = t($type['name']). $warn;
+    }
+  }
+  else {
+    $types = node_type_get_types();
+	  $types = ad_types();
+	  //dpm($types);
+    $suffix = '';
+    foreach ($types as $type) {
+      if (module_exists('comment')) {
+        $default = variable_get('comment_' . $type->type, COMMENT_NODE_OPEN);
+        $map = array(t('Hidden'), t('Closed'), t('Open'));
+        $suffix = '<small>. ' . t('Comments: ') . $map[$default]. '</small>';
+      }
+      $options[$type->type] = t($type->type) . $suffix;
+    }
+  }
+  // we cannot currently generate valid polls.
+  //unset($options['poll']);
+
+  if (empty($options)) {
+    drupal_set_message(t('You do not have any content types that can be generated. <a href="@create-type">Go create a new content type</a> already!</a>', array('@create-type' => url('admin/structure/types/add'))), 'error', FALSE);
+    return;
+  }
+
+  $form['ad_types'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Ad types'),
+    '#options' => $options,
+    '#default_value' => array_keys($options),
+  );
+  //if (module_exists('checkall')) $form['node_types']['#checkall'] = TRUE;
+  $form['kill_ads'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('<strong>Delete all content</strong> in these content types before generating new content.'),
+    '#default_value' => FALSE,
+  );
+  $form['num_ads'] = array(
+    '#type' => 'textfield',
+    '#title' => t('How many nodes would you like to generate?'),
+    '#default_value' => 50,
+    '#size' => 10,
+  );
+
+  $options = array(1 => t('Now'));
+  foreach (array(3600, 86400, 604800, 2592000, 31536000) as $interval) {
+    $options[$interval] = format_interval($interval, 1) . ' ' . t('ago');
+  }
+  $form['time_range'] = array(
+    '#type' => 'select',
+    '#title' => t('How far back in time should the nodes be dated?'),
+    '#description' => t('Node creation dates will be distributed randomly from the current time, back to the selected time.'),
+    '#options' => $options,
+    '#default_value' => 604800,
+  );
+
+  // $form['max_comments'] = array(
+    // '#type' => module_exists('comment') ? 'textfield' : 'value',
+    // '#title' => t('Maximum number of comments per node.'),
+    // '#description' => t('You must also enable comments for the content types you are generating. Note that some nodes will randomly receive zero comments. Some will receive the max.'),
+    // '#default_value' => 0,
+    // '#size' => 3,
+    // '#access' => module_exists('comment'),
+  // );
+  
+  $form['title_length'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Maximum number of words in titles'),
+    '#default_value' => 4,
+    '#size' => 10,
+  );
+  // $form['add_alias'] = array(
+    // '#type' => 'checkbox',
+    // '#disabled' => !module_exists('path'),
+    // '#description' => t('Requires path.module'),
+    // '#title' => t('Add an url alias for each node.'),
+    // '#default_value' => FALSE,
+  // );
+  // $form['add_statistics'] = array(
+    // '#type' => 'checkbox',
+    // '#title' => t('Add statistics for each node (node_counter table).'),
+    // '#default_value' => TRUE,
+    // '#access' => module_exists('statistics'),
+  // );
+
+  unset($options);
+  $options[LANGUAGE_NONE] = t('Language neutral');
+  if (module_exists('locale')) {
+    $options += locale_language_list();
+  }
+  $form['add_language'] = array(
+    '#type' => 'select',
+    '#title' => t('Set language on nodes'),
+    '#multiple' => TRUE,
+    '#disabled' => !module_exists('locale'),
+    '#description' => t('Requires locale.module'),
+    '#options' => $options,
+    '#default_value' => array(LANGUAGE_NONE),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Generate'),
+  );
+  $form['#redirect'] = FALSE;
+
+  return $form;
+}
+
+/**
+ * FormAPI submission to generate nodes.
+ */
+function ad_generate_ads_form_submit($form_id, &$form_state) {
+	
+  module_load_include('inc', 'devel_generate', 'devel_generate');
+  $form_state['values']['ad_types'] = array_filter($form_state['values']['ad_types']);
+  
+   module_load_include('inc', 'devel_generate');
+    ad_generate_ads($form_state);
+	
+  // if ($form_state['values']['num_ads'] <= 50 && $form_state['values']['max_comments'] <= 10) {
+    // module_load_include('inc', 'devel_generate');
+    // devel_generate_content($form_state);
+  // }
+  // else {
+    // module_load_include('inc', 'devel_generate', 'devel_generate_batch');
+    // devel_generate_batch_content($form_state);
+  // }
+}
+
+

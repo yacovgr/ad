@@ -1,0 +1,139 @@
+<?php
+
+
+/**
+ * Implements hook_schema().
+ */
+function ad2_log_schema() {
+	
+  $schema['ad2_log'] = array(
+    'description' => 'Stores site access information for statistics.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique accesslog ID.',
+      ),
+      'sid' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Browser session ID of user that visited page.',
+      ),
+      'path' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'description' => 'Internal path to page visited (relative to Drupal root.)',
+      ),
+      // 'bot' => array(
+        // 'type' => 'int',
+        // 'unsigned' => TRUE,
+        // 'not null' => TRUE,
+        // 'default' => 0,
+        // 'description' => 'is request from bot',
+      // ),
+      'hostname' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => FALSE,
+        'description' => 'Hostname of user that visited the page.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'default' => 0,
+        'description' => 'User {users}.uid that visited the page.',
+      ),
+      'timestamp' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Timestamp of when the page was visited.',
+      ),
+      'referer' => array(
+		'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'description' => 'referer.',
+	 ),
+	 'action' => array(
+		'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'action.',
+	 ),
+	 'description' => array(
+		'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'description.',
+	 ),
+	 'nid' => array(
+		'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        //'default' => 0,
+        'description' => 'nid.',
+	 ),
+	 'aid' => array(
+		'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        //'default' => 0,
+        'description' => 'nid.',
+	 ),
+	 'bid' => array(
+		'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        //'default' => 0,
+        'description' => 'nid.',
+	 ),
+	 'gid' => array(
+		'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        //'default' => 0,
+        'description' => 'nid.',
+	 ),
+	  'filter' => array(
+		'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        //'default' => 0,
+        'description' => 'nid.',
+	 ),
+	  'done' => array(
+		'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'nid.',
+	 ),
+    ),
+    'indexes' => array(
+      'accesslog_timestamp' => array('timestamp'),
+      'uid' => array('uid'),
+    ),
+    'primary key' => array('id'),
+    'foreign keys' => array(
+      'visitor' => array(
+        'table' => 'users',
+        'columns' => array('uid' => 'uid'),
+      ),
+    ),
+  );
+
+  return $schema;
+}
+
+function ad2_log_uninstall(){
+	variable_del('ad2_log_enable_node_access_log');
+	
+}

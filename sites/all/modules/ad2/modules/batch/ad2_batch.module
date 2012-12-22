@@ -1,0 +1,147 @@
+<?
+
+
+function ad2_batch_menu(){
+	
+  $items['admin/reports/ad2/batch1'] = array(
+    'title' => 'Batch',
+    'page callback' => 'ad2_batch_page',
+    'access arguments' => array( 'administer advertisements'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 14,
+    'file' => 'ad2_batch.admin.inc',
+  );
+	
+	
+// 	
+  // $items['admin/reports/had/batch1/%'] = array(
+    // 'title' => 'Batch',
+    // 'page callback' => 'had_batch_view_page',
+    // 'page arguments' => array(4),
+    // 'access arguments' => array( 'administer advertisements'),
+    // 'type' => MENU_DEFAULT_LOCAL_TASK,
+    // 'weight' => 14,
+    // 'file' => 'had_batch.admin.inc',
+  // );
+// 	
+	
+  
+  return $items;
+}
+
+// go over ad_batch table in 12:15 and delete all entries in it
+function ad2_batch_cron(){
+	
+	$last = variable_get('ad2_batch_cron_last' , mktime(0,15,0,1,17,2012) );
+	
+	if( time() > $last ){
+		
+		db_delete('ad2_batch')
+			->execute();
+		
+		variable_set('ad2_batch_cron_last' , $last + 24*60*60 );
+	}
+}
+
+
+
+/**
+ * implements hook_ad2_selection_alter
+ */
+function ad2_batch_ad2_selection_alter($ads , $params , $response ){
+
+	if( isset($response->rows) ){
+
+		$base = ( $params['page'] ) * $params['quantity'];
+			
+		$batch = array();
+		foreach ($response->rows as $n => $row ) {
+			$pos = $n + $base;
+			$batch[$pos] = array(
+				'aid' 	=> $row->aid,
+				'price' => $row->bid,
+				'score' => $row->score,
+			);
+		}
+		
+		$id = db_insert('ad2_batch')
+			->fields(array(
+				'data' => serialize($batch),
+				'created' => time(),
+			))
+			->execute()
+			;
+		
+		
+		foreach ($ads as $ad) {
+			$ad->batch_id = $id;
+		}
+	}
+	
+	
+	
+
+}
+
+
+/**
+ * put stuff in the node and preform operations
+ */
+// function ad2_batch_ad2_build_display_pre_render( &$nodes , &$params ){
+// 
+	// if( isset($params['query_rows']) ){
+// 
+		// $base = ( $params['page'] - 1 ) * $params['quantity'];
+// 			
+		// $batch = array();
+		// foreach ($params['query_rows'] as $n => $row ) {
+			// $pos = $n + $base;
+			// $batch[$pos] = array(
+				// 'aid' 	=> $row->aid,
+				// 'price' => $row->bid,
+				// 'score' => $row->score,
+			// );
+		// }
+// 		
+		// $id = db_insert('ad2_batch')
+			// ->fields(array(
+				// 'data' => serialize($batch),
+				// 'created' => time(),
+			// ))
+			// ->execute()
+			// ;
+// 		
+		// foreach( $nodes as $node ){
+			// $node->batch_id = $id;
+		// }
+	// }
+// 	
+// }
+
+// 
+// function _had_batch_create( &$params ){
+// 	
+// 	
+// }
+
+function ad2_batch_load( $id ){
+	
+	$batch = db_query('select data from ad2_batch where id = :id' , array(':id' => $id ) )->fetchField();
+  	if( $batch )
+  		$batch = unserialize( $batch );
+	
+	return $batch;
+}
+
+function ad2_batch_preprocess_entity(&$vars, $hook){
+	
+	if( $vars['entity_type'] == 'ad2' && $vars['view_mode'] != 'full' ){
+			
+		$ad = $vars['ad2'];
+		
+		if( isset( $ad->batch_id) ){
+			$vars['ad2_uri']['b'] = $ad->batch_id;
+		} 
+	}
+}
+

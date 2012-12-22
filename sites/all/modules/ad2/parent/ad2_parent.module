@@ -1,0 +1,579 @@
+<?php
+
+define('AD2_SITE_FIELD', 'field_site');
+
+function ad2_parent_menu(){
+	
+	$items['node/%node/ad2'] = array(
+		'title' 		=> 'מודעות',
+		'page callback' => 'ad2_parent_ads_page',
+		'page arguments' => array( 1),
+		'access callback' =>  'ad2_parent_access_tab',
+		'access arguments' => array(1 , 'had'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 20,
+		'file' => 'ad2_parent.pages.inc',
+	);
+
+	
+	$items['node/%node/ad2/default'] = array(
+		'title' 		=> 'מודעות',
+		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'weight' => 1,
+		//'file' => 'ad2_parent.pages.inc',
+	);
+
+
+
+	// $items['admin/config/ad2/parent'] = array(
+		// 'title' 		=> 'אב',
+		// 'page callback' => 'drupal_get_form',
+		// 'page arguments' => array( 'ad2_parent_config_form'),
+		// //'access callback' =>  'ad2_parent_access_tab',
+		// 'access arguments' => array('administer ad2 types'),
+		// 'type' => MENU_LOCAL_TASK,
+		// 'weight' => 20,
+		// 'file' => 'ad2_parent.admin.inc',
+	// );
+
+	// $items['ad2-parent/autocomplete'] = array(
+	    // 'page callback' => 'ad2_parent_autocomplete',
+	    // //'page arguments' => array(2),
+	    // 'access callback' => true, // 'reference_autocomplete_access',
+	    // //'access arguments' => array(2, 3, 4),
+	    // 'type' => MENU_CALLBACK,
+	  // );
+	
+	return $items;
+}
+
+// some sort of config.
+// once the parent_type was set - there is no way to unset it
+// also adds field to all ad types
+// also adds fields to parent node type - this maybe in some other module
+
+
+function ad2_parent_field_attach_create_bundle($entity_type, $bundle){
+	
+	$type = 'ad2';
+	
+	if( $type == $entity_type ){
+		
+		$field_name = AD2_SITE_FIELD;
+		
+		if (!field_info_instance($entity_type, $field_name, $bundle)) {
+		    $instance = array(
+		      'field_name' => $field_name,
+		      'bundle' => $bundle,
+		      'entity_type' => $entity_type,
+		      'label' => t('Site'),
+		      //'description' => t('This is the text a user may send to the group administrators.'),
+		      'required' => TRUE,
+		    );
+		    field_create_instance($instance);
+		}
+	}
+}
+
+
+
+function ad2_parent_access_tab($node , $tab ){
+	
+	return true;
+	
+	global $user;
+
+	$type = is_string($node) ? $node : $node->type;
+
+	switch ($tab) {
+		case 'had':
+			if( $type == "site" ){
+				//return user_access('edit any advertisement') || node_access('edit' , $node);
+				return (user_access('edit any site content') || (user_access('edit own site content') &&  ($user->uid == $node->uid) ));
+				//return user_access('edit any advertisement') || node_access('edit' , $node);
+			}
+			break;
+
+		case 'activity':
+			if( $type == "site_ad" ){
+				return user_access('edit any advertisement') || node_access('edit' , $node);
+			}
+			break;
+
+		default:
+			return false;
+			break;
+	}
+
+
+	return false;
+
+}
+
+function ad2_parent_entity_load($entities, $type){
+		
+	if( $type == 'ad2' ){
+		
+		//tr( $entities );
+		//die();
+		
+		foreach ($entities as $entity ) {
+			//$entity->language = 'he';
+			if( isset($entity->field_site['und'][0]['nid'])){
+				$nid = $entity->field_site['und'][0]['nid'];
+				$entity->nid = $nid;
+				$entity->ad_parent = node_load($nid);
+			}
+		}
+	}
+}
+
+
+function ad2_parent_entity_presave($entity, $type ){
+
+	if( $type != 'ad2')
+		return;
+
+	$site_nid = $entity->{AD2_SITE_FIELD}['und'][0]['nid'];
+	$site = node_load( $site_nid );
+
+	if( $site && $site->uid)
+		$entity->uid = $site->uid;
+
+}
+
+
+/**
+ * Implements hook_field_extra_fields().
+ */
+function ad2_parent_field_extra_fields() {
+
+	foreach ( ad2_types() as $type => $info ) {
+		$return['ad2'][$type] = array(
+		  	'form' => array(),
+		    'display' => array(
+		      'prices' => array(
+		        'label' => 'מחירים',
+		        'description' => t('מחירים.'),
+		        'weight' => 5,
+		      ),
+		      'exclusive' => array(
+		        'label' => 'בלעדי',
+		        'description' => t('בלעדי'),
+		        'weight' => 7,
+		      ),
+		       'weekend_busy' => array(
+		        'label' => 'תפוס לסוף השבוע הקרוב',
+		        'description' => t('תפוס לסוף השבוע הקרוב'),
+		        'weight' => 8,
+		      ),
+		      'location' => array(
+		        'label' => 'אזור ישוב',
+		        'description' => t('אזור ישוב'),
+		        'weight' => 9,
+		      ),
+		      
+		      'settlement' => array(
+		        'label' => ' ישוב',
+		        'description' => t('Settlement'),
+		        'weight' => 10,
+		      ),
+		      
+		      'button' => array(
+		        'label' => 'כפתור',
+		        'description' => t('כפתור'),
+		        'weight' => 11,
+		      ),
+		      // 'hatava' => array(
+		        // 'label' => 'הטבה',
+		        // 'description' => t('הטבה'),
+		        // 'weight' => 12,
+		      // ),
+		      'subtitle' => array(
+		        'label' => 'כותרת משנה',
+		        'description' => t('כותרת משנה'),
+		        'weight' => 13,
+		      ),
+				
+		    ),
+		  );
+	}
+  
+  	 return $return;
+	 
+	 
+  $return['node']['site_page_ad'] = array(
+  	'form' => array(
+		// 'testing' => array(
+			 // 'label' => 'testing',
+        	// 'description' => 'testing',
+        	// 'weight' => 5,
+		// ),
+	),
+    'display' => array(
+      'prices' => array(
+        'label' => 'מחירים',
+        'description' => t('מחירים.'),
+        'weight' => 5,
+      ),
+      'exclusive' => array(
+        'label' => 'בלעדי',
+        'description' => t('בלעדי'),
+        'weight' => 7,
+      ),
+       'weekend_busy' => array(
+        'label' => 'תפוס לסוף השבוע הקרוב',
+        'description' => t('תפוס לסוף השבוע הקרוב'),
+        'weight' => 8,
+      ),
+      'location' => array(
+        'label' => 'אזור ישוב',
+        'description' => t('אזור ישוב'),
+        'weight' => 9,
+      ),
+      'score' => array(
+        'label' => 'דירוג גולשים',
+        'description' => t('דירוג גולשים'),
+        'weight' => 10,
+      ),
+      'button' => array(
+        'label' => 'כפתור',
+        'description' => t('כפתור'),
+        'weight' => 11,
+      ),
+      'hatava' => array(
+        'label' => 'הטבה',
+        'description' => t('הטבה'),
+        'weight' => 12,
+      ),
+      'subtitle' => array(
+        'label' => 'כותרת משנה',
+        'description' => t('כותרת משנה'),
+        'weight' => 13,
+      ),
+
+    ),
+  );
+
+  $return['node']['site_click_ad'] = array(
+
+  	'form' => array(),
+    'display' => array(
+      'location' => array(
+        'label' => 'ישוב',
+        'description' => t('ישוב'),
+        'weight' => 9,
+      ),
+      'prices' => array(
+        'label' => 'מחירים',
+        'description' => t('מחירים.'),
+        'weight' => 5,
+      ),
+
+    ),
+  );
+
+
+  $return['node']['site_ad_front'] = array(
+
+  	'form' => array(),
+    'display' => array(
+      'location' => array(
+        'label' => 'אזור ישוב',
+        'description' => t('אזור ישוב'),
+        'weight' => 9,
+      ),
+      'prices' => array(
+        'label' => 'מחירים',
+        'description' => t('מחירים.'),
+        'weight' => 5,
+      ),
+	  'hatava' => array(
+        'label' => 'הטבה',
+        'description' => t('הטבה'),
+        'weight' => 12,
+      ),
+    ),
+  );
+
+
+  $return['node']['site_ad_post'] = array(
+
+  	'form' => array(),
+    'display' => array(
+      'post' => array(
+        'label' => 'ביקורת',
+        'description' => 'ביקורת',
+        'weight' => 9,
+      ),
+
+    ),
+  );
+
+
+
+  return $return;
+}
+
+
+
+// 
+// function ad2_parent_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
+// 	
+	// if( $entity_type == 'ad2' ){
+		// if( isset($form[AD2_SITE_FIELD]['und'] ) ){
+			// //tr( $form[AD2_SITE_FIELD]['und'] );
+			// if( isset($form[AD2_SITE_FIELD]['und']['#default_value']) && count($form[AD2_SITE_FIELD]['und']['#default_value']) ){
+				// $form[AD2_SITE_FIELD]['und']['#attributes']['disabled'] = 'true';
+			// } elseif( isset($_GET['field_site']) && is_numeric($_GET['field_site']) ){
+// 				
+// 				
+				// $form[AD2_SITE_FIELD]['und']['#default_value'][] =  $_GET['field_site'];
+				// $form[AD2_SITE_FIELD]['und']['#attributes']['readonly'] = 'true';
+			// }
+		// }
+	// }
+// 	
+// }
+
+
+
+
+function _ad2_parent_preprocess_block(&$vars, $hook){
+	//return;
+	//tr( $hook);
+	//$block_id = $vars['block_id']
+	$block = $vars['block'];
+	
+	if( $block->module == 'ad2_blocks'){
+		$block_id = $vars['block_id'];
+		tr( $block_id );
+		tr( $block );
+		tr( array_keys( $vars ));
+	}
+	//
+}
+
+
+/**
+ * let other modules add thier stuff in thier preprocess function
+ */
+function ad2_parent_preprocess_entity(&$vars, $hook){
+	
+}
+
+
+function ad2_parent_process_entity(&$vars, $hook){
+	
+	if( $vars['entity_type'] == 'ad2' && $vars['view_mode'] != 'full' ){
+		
+		$ad = $vars['ad2'];
+		
+		$ad2_uri = $vars['ad2_uri'];
+		
+		//tr( $options );
+		//tr( $vars['ad2_uri'] );
+		
+		if( isset( $ad->ad_parent) ){
+			$parent = $ad->ad_parent;
+			$vars['title'] = $parent->title;
+			
+			$ad2_uri  = array('ad2' => $ad->aid) + $ad2_uri;
+			//tr( $ad2_uri );
+			
+			$options = array('query' => $ad2_uri);
+			
+			//$vars['node_had_url'] 	= url( 'node/' . $parent->nid , $options );
+			//$vars['node_url'] 		= url( 'node/' . $parent->nid , $options);
+			$vars['url'] 		= url( 'node/' . $parent->nid , $options);
+		
+		
+		}
+	}
+}
+
+
+
+function ad2_parent_entity_view( $entity, $type, $view_mode, $langcode ){
+
+	global $user;
+
+	if( $type != 'ad2')
+		return;
+	
+
+	if( $view_mode != 'full'){
+		$entity->title = $entity->ad_parent->title;
+		// if( isset($node->content['title_field'])){
+			// $node->content['title_field'][0]['#markup'] = $site->title;
+		// }
+	}
+
+
+	
+	$entity->content['exclusive'] = array(
+		'#title' => 'בלעדי',
+		'#label_display' => 'hidden',
+		'#items' => array(0),
+		'#theme' => 'field',
+		'#field_name' => 'prices',
+		'#field_type' => 'prices',
+		'#bundle' => $entity->type,
+		0 => array(
+			'#markup' => $entity->ad_parent->field_exclusive['und'][0]['value'] ? "בלעדי לאתר" : '&nbsp;',
+		),
+	);
+	
+	
+	
+
+	$tids = array();
+	//$tids[] = $site->field_zone['und'][0]['tid'];
+	$tids[] = $entity->ad_parent->field_area['und'][0]['tid'];
+	$tids[] = $entity->ad_parent->field_settlement['und'][0]['tid'];
+
+	$terms = taxonomy_term_load_multiple($tids);
+
+	$location = array();
+	foreach ($terms as $term ) {
+		$location[] = "<span>" . $term->name . "</span>";
+	}
+
+	$entity->content['location'] = array(
+		'#title' => 'אזור ישוב',
+		'#label_display' => 'hidden',
+		'#items' => array(0),
+		'#theme' => 'field',
+		'#field_name' => 'location',
+		'#field_type' => 'location',
+		'#bundle' => $entity->type,
+		0 => array(
+			'#markup' => implode(' - ' , $location ),
+		),
+	);
+	
+	
+	$tids = array();
+	
+	//$tids[] = $site->field_area['und'][0]['tid'];
+	$tids[] = $entity->ad_parent->field_settlement['und'][0]['tid'];
+
+	$terms = taxonomy_term_load_multiple($tids);
+
+	$location = array();
+	foreach ($terms as $term ) {
+		$location[] = "<span>" . $term->name . "</span>";
+	}
+	$entity->content['settlement'] = array(
+		'#title' => ' ישוב',
+		'#label_display' => 'hidden',
+		'#items' => array(0),
+		'#theme' => 'field',
+		'#field_name' => 'settlement',
+		'#field_type' => 'settlement',
+		'#bundle' => $entity->type,
+		0 => array(
+			'#markup' => implode(' - ' , $location ),
+		),
+	);
+	
+	
+	//$info = field_info_extra_fields( 'ad2' , $entity->type , 'display');
+	//tr( $info );
+	
+	$entity->content['button'] = array(
+		'#title' => 'כפתור',
+		'#label_display' => 'hidden',
+		'#items' => array(0),
+		'#theme' => 'field',
+		'#field_name' => 'button',
+		'#field_type' => 'button',
+		'#bundle' => $entity->type,
+		0 => array(
+			'#markup' => '<button>הצג</button>',
+		),
+	);
+	
+	
+	
+	$min = isset( $entity->ad_parent->field_price_min['und'][0]['value'] ) ?  $entity->ad_parent->field_price_min['und'][0]['value'] : 0;
+	$max = isset( $entity->ad_parent->field_price_max['und'][0]['value'] ) ?  $entity->ad_parent->field_price_max['und'][0]['value'] : 0;
+
+
+	$entity->content['prices'] = array(
+		'#title' => 'מחיר',
+		'#label_display' => 'hidden',
+		'#items' => array(0),
+		'#theme' => 'field',
+		'#field_name' => 'prices',
+		'#field_type' => 'prices',
+		'#bundle' => $entity->type,
+		0 => array(
+			'#markup' => "מ " . $min . " עד " . $max . ' ש"ח',
+			//'#markup' => 'החל מ -' . $p .' ' . 'ש"ח ללילה'
+		),
+	);
+
+
+	$entity->content['weekend_busy'] = array(
+		'#title' => 'תפוס לסופ"ש',
+		'#label_display' => 'hidden',
+		'#items' => array(0),
+		'#theme' => 'field',
+		'#field_name' => 'weekend_busy',
+		'#field_type' => 'weekend_busy',
+		'#bundle' => $entity->type,
+		0 => array(
+			'#markup' => $entity->ad_parent->field_weekend_busy['und'][0]['value'] ? 'תפוס בסופ"ש הקרוב' : '&nbsp;',
+		),
+	);
+
+	
+	return;
+	
+	if( isset($site->field_sub_title['he'][0]['safe_value']) ){
+		$node->content['subtitle'] = array(
+			'#title' => 'כותרת משנה',
+			'#label_display' => 'hidden',
+			'#items' => array(0),
+			'#theme' => 'field',
+			'#field_name' => 'subtitle',
+			'#field_type' => 'subtitle',
+			'#bundle' => $node->type,
+			0 => array(
+				'#markup' => $site->field_sub_title['he'][0]['safe_value'],
+			),
+		);
+	}
+
+
+
+
+	$info = field_info_extra_fields( 'node' , $node->type , 'display');
+
+	if( isset($info['post']['display'][$view_mode] )){
+
+		$deff =  $info['post']['display'][$view_mode];
+		if( $deff['visible'] ){
+
+			//$site = node_load( $node->field_site['und'][0]['nid']);
+
+			if( $node->post ){
+				$node->content['post'] = array(
+					'#title' => 'ביקורת',
+					'#label_display' => 'hidden',
+					'#items' => array(0),
+					'#theme' => 'field',
+					'#field_name' => 'post',
+					'#field_type' => 'post',
+					'#bundle' => 'site_ad_post',
+					0 => comment_view($node->post , $site , 'ad_teaser' ),
+				);
+			}
+		}
+	}
+
+
+}
+
+

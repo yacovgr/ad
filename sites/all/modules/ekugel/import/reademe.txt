@@ -1,0 +1,8 @@
+content/ekugel/import
+content/ekugel/import/settings
+	- put the database stuff here
+content/ekugel/import/users
+	- add field old_id
+	- add other fields 
+	- map data to be imported into current roles
+	

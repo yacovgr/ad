@@ -1,0 +1,12 @@
+name = Ad2 Bids and Auto bids
+description = "let users put a bid on ad in term."
+core = 7.x
+package = ad2
+dependencies[] = ad2
+dependencies[] = ad2_parent
+dependencies[] = ad2_clickprice
+dependencies[] = ad2_rank
+dependencies[] = ad2_master
+dependencies[] = ad2_roof
+
+;dependencies[] = had_money

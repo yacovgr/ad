@@ -1,0 +1,11 @@
+name = Ads 
+description = provieds ads system
+package = Ads
+
+core = 7.x
+
+dependencies[] = entity
+dependencies[] = views
+
+files[] = includes/ad.controller.inc
+

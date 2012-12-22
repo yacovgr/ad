@@ -1,0 +1,10 @@
+name = Ad2 Image Parent
+description = provieds ads with image field selection
+package = Ad2
+
+core = 7.x
+
+
+dependencies[] = ad2
+dependencies[] = ad2_image
+dependencies[] = ad2_parent

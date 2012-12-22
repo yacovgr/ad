@@ -1,0 +1,8 @@
+name = Ad2 Click Price
+description = provieds ads with click price field
+package = Ad2
+
+core = 7.x
+
+
+dependencies[] = ad2

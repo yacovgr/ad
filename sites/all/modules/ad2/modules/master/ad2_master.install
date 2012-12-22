@@ -1,0 +1,37 @@
+<?
+
+function ad2_master_schema_alter(&$schema) {
+	
+	$schema['ad2']['fields']['master'] = array(
+    	'description' => 'is the ad is master.',
+    	'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+  );
+}
+
+function ad2_master_install(){
+	
+	db_add_field('ad2' , 'master' ,  array(
+    	'description' => 'is the ad is master.',
+    	'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+  	));
+	
+	
+}
+
+function ad2_master_uninstall(){
+	// populate the table
+	
+	db_drop_field('ad2' , 'master');
+	
+	
+	//variables : 
+	//variable_del('ad2_roof_cron_date');
+	//variable_del('ad2_roof_min_default');
+	
+}
