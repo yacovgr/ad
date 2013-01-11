@@ -120,6 +120,9 @@ class AdWeightProbabilityOrderTestCase extends AdWeightTestCase {
 		$ad4 = $this->createAd($type1->type, array('weight' => 0.5));
 		$this->assertEqual($ad4->weight , 0.5 , 'ad weight resolves to ' . $ad4->weight );
 		
+		$ad5 = $this->createAd($type1->type, array('weight' => 1));
+		$ad6 = $this->createAd($type1->type, array('weight' => 1));
+		
 		
 		$probability = array();
 		for( $x = 0 ; $x < 50 ; $x++ ){

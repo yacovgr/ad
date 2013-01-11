@@ -195,7 +195,7 @@ class AdBlockViewBlockTestCase extends AdBlockTestCase {
 		$delta = 1;
 		$block = ad_block_get_block($delta);
 		
-		$aids = ad_block_select($block);
+		$aids = ad_select($block);
 		$this->assertEqual(count($aids) , 3 , 'ad count resolves to 3');
 		
 		$this->drupalGet('');
@@ -244,7 +244,7 @@ class AdBlockBlockViewRespectsTypesTestCase extends AdBlockTestCase {
 		$delta = 1;
 		$block = ad_block_get_block($delta);
 		
-		$aids = ad_block_select($block);
+		$aids = ad_select($block);
 		$ads = ad_load_multiple($aids);
 		foreach ($ads as $ad) {
 			$this->assertEqual($ad->type , $type1->type , 'ad types resolves to ' . $type1->type );
@@ -269,7 +269,7 @@ class AdBlockBlockViewRespectsTypesTestCase extends AdBlockTestCase {
 		
 		
 		
-		$aids = ad_block_select($block);
+		$aids = ad_select($block);
 		
 		
 		$this->assertEqual(count($aids) , 4 , 'ad count resolves to 3');
