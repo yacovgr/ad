@@ -1,0 +1,11 @@
+name = Ads Weights
+description = provieds weight probability random ordering to ads 
+package = Ads
+
+core = 7.x
+
+dependencies[] = ad
+
+
+files[] = ad_weight.test
+

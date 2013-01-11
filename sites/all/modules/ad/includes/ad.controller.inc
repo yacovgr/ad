@@ -9,7 +9,7 @@ class AdController extends EntityAPIController {
     $values += array(
       'title' => '',
       'url' => '',
-      'weight'	=> 0,
+      'weight'	=> 1,
       'size'	=> '',
       'created' => REQUEST_TIME,
       'changed' => REQUEST_TIME,

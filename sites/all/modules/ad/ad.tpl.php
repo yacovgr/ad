@@ -29,10 +29,10 @@
  */
 ?>
 <?php
-	$aid = $elements['#entity']->aid;
-	$redirect_url = url('ad/redirect' , array('absolute' => true , 'query' => array('aid' => $aid )));
+	//$aid = $elements['#entity']->aid;
+	//$redirect_url = url('ad/redirect' , array('absolute' => true , 'query' => array('aid' => $aid )));
 ?>
-<?php if($view_mode == 'teaser'){  ?>
+<?php if( false && $view_mode == 'teaser'){  ?>
 <div class="<?php print $classes; ?> clearfix"<?php print $attributes; ?> onclick="window.location.href='<?php print $redirect_url; ?>'">
 <?php } else { ?>
 <div class="<?php print $classes; ?> clearfix"<?php print $attributes; ?>>	

@@ -29,6 +29,7 @@
 
 // $ads->click($ad);
 // $ads->view($ads);
+
 function ad( &$params , $response ){
 	
 	
@@ -288,7 +289,7 @@ function ad_menu() {
 	$items['admin/reports/ad'] = array(
 		'title' => 'ad Reports',
     	'page callback' => 'ad_report_page',
-    	'access arguments' => array('administer ad types'),
+    	'access arguments' => array('administer ad entities'),
     	'weight' => 1,
     	'type' => MENU_NORMAL_ITEM,
     	'file' => 'ad.pages.inc',
@@ -326,33 +327,6 @@ function ad_menu() {
   
 	
 	
-  $items['ad/iframe'] = array(
-    'title' => 'Ads Iframe Callback',
-    'page callback' => 'ad_iframe',
-    //'page arguments' => array('ads_config_form'),
-    'access arguments' => array('access content'),  // maybe here acccess ads
-    'type' => MENU_CALLBACK,
-    'weight' => 2,
-    'delivery callback' => 'ad_iframe_delivery_callback', 
-    //'file' => 'ad.admin.inc',
-  );
-  //delivery callback
-	
-	
-  $items['ad/jquery'] = array(
-    'title' => 'Ads JQuery Callback',
-    'page callback' => 'ad_jquery',
-    //'page arguments' => array('ads_config_form'),
-    'access arguments' => array('access content'),  // maybe here acccess ads
-    'type' => MENU_CALLBACK,
-    'weight' => 2,
-    'delivery callback' => 'ad_iframe_delivery_callback', 
-    //'delivery callback' => 'ajax_deliver', 
-    //'file' => 'ad.admin.inc',
-  );
-  //delivery callback
-	
-	
 	
   $items['ad/redirect'] = array(
     'title' => 'Ads JQuery Callback',
@@ -382,6 +356,13 @@ function ad_permission() {
       'description' => t('Allows users to configure ad types and their fields.'),
       'restrict access' => TRUE,
     ),
+    
+    'administer ad entities' => array(
+      'title' => t('Administer ad entities'),
+      'description' => t('Allows users to administer ad entities.'),
+      'restrict access' => TRUE,
+    ),
+    
     'create ad entities' => array(
       'title' => t('Create ads'),
       'description' => t('Allows users to create ads.'),
@@ -481,8 +462,8 @@ function ad_access($op, $ad, $account = NULL, $entity_type = NULL) {
  * Load a task.
  */
 function ad_load($aid, $reset = FALSE) {
-  $tasks = ad_load_multiple(array($aid), array(), $reset);
-  return reset($tasks);
+  $ads = ad_load_multiple(array($aid), array(), $reset);
+  return reset($ads);
 }
 
 /**
@@ -495,22 +476,22 @@ function ad_load_multiple($aids = array(), $conditions = array(), $reset = FALSE
 /**
  * Save task.
  */
-function ad_save($contact) {
-  entity_save('ad', $contact);
+function ad_save($ad) {
+  entity_save('ad', $ad);
 }
 
 /**
  * Delete single task.
  */
-function ad_delete($task) {
-  entity_delete('ad', entity_id('ad' ,$task));
+function ad_delete($ad) {
+  entity_delete('ad', entity_id('ad' ,$ad));
 }
 
 /**
  * Delete multiple tasks.
  */
-function ad_delete_multiple($task_ids) {
-  entity_delete_multiple('ad', $task_ids);
+function ad_delete_multiple($ad_ids) {
+  entity_delete_multiple('ad', $ad_ids);
 }
 
 
@@ -579,311 +560,311 @@ function ad_get_block($delta){
 	return $custom_block;
 }
 
-
-function ad_block_info(){
-
-	$blocks = array();
-
-	$result = db_query('SELECT delta, info FROM ad_block ORDER BY info'); 
-  	foreach ($result as $block) {
-	    $blocks[$block->delta]['info'] = t('Ads Module') . ': ' . $block->info;
-	    
-	    // Not worth caching. maybe it is worth caching
-	    $blocks[$block->delta]['cache'] = DRUPAL_NO_CACHE;
-  	}
-	return $blocks;
-
-}
-
-function ad_block_view($delta = ''){
-
-	$block = ad_get_block( $delta );
-	
-	//tr( $block );
-	
-	//$display = 'jquery';
-	
-	switch ($block->display) {
-		case 'raw':
-			// get sds
-			// display ads 
-			
-			$content['ads'] =   array('#markup' => 'ads display=raw' , '#type' => 'markup');
-			
-			$aids = ad_select($block->quantity);
-			$ads = ad_load_multiple($aids);
-			$content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
-			break;
-		
-		case 'jquery':
-			
-			//return "\n<div class=\"advertisement group-$group\" id=\"group-id-$id\">\n <script type=\"text/javascript\">\n//<![CDATA[\n  $(document).ready(function(){ jQuery(\"div#group-id-$id\").load(\"$display\"); });\n //]]>\n </script>\n</div>\n";
-			
-			//$content['ads'] =  array('#markup' => 'ads display=jquery' , '#type' => 'markup');
-			// http://ad.e-kugel.org/ad/jquery
-			$load_url = url('/ad/jquery' , array(
-				'absolute' => true,
-				'query' => array('quantity' => $block->quantity)
-			));
-			$content['ads'] = array(
-				'#type' => 'html_tag',
-				'#tag' => 'div',
-				'#value' => "<div id='aaa-aaa'>aaa aaa aaa</div><script type=\"text/javascript\">\n//<![CDATA[\n (function ($) { $(document).ready(function(){ jQuery(\"div#ad-jquery-first\").load(\"$load_url\"); });})(jQuery);\n //]]>\n </script>",
-				'#attributes' => array(
-					
-					'width' => '100%', 
-					'height' => '80px', 
-					'class' => 'ad-jquery',
-					'id' => 'ad-jquery-first',
-				),
-				
-			);
-			break;
-		
-		case 'iframe':
-			
-			$load_url = url('/ad/iframe' , array(
-				'absolute' => true,
-				'query' => array('quantity' => $block->quantity)
-			));
-			
-			
-			$content['ads'] =  array(
-				'#type' => 'html_tag',
-				'#tag' => 'iframe',
-				'#value' => '',
-				'#attributes' => array(
-					'src' => $load_url,
-					'width' => '100%', 
-					//'width' => '70px', 
-					'height' => '400px', 
-					//'scrolling' => 'no',
-					'scrolling' => 'auto',
-					'frameborder' => 0,
-					'class' => 'ad-iframe',
-				)
-			);
-			
-			
-			
-			break;
-		
-		default:
-			
-			break;
-	}
-	
-	
-	
-	//tr($block);
-	//drupal_alter('ad2_blocks_params' , $block);
-	
-	//tr( $block );
-	// $view_mode = $block->view_mode;
+// 
+// function ad_block_info(){
+// 
+	// $blocks = array();
+// 
+	// $result = db_query('SELECT delta, info FROM ad_block ORDER BY info'); 
+  	// foreach ($result as $block) {
+	    // $blocks[$block->delta]['info'] = t('Ads Module') . ': ' . $block->info;
+// 	    
+	    // // Not worth caching. maybe it is worth caching
+	    // $blocks[$block->delta]['cache'] = DRUPAL_NO_CACHE;
+  	// }
+	// return $blocks;
+// 
+// }
+// 
+// function ad_block_view($delta = ''){
+// 
+	// $block = ad_get_block( $delta );
 // 	
-	// $qp = array(
-		// 'quantity' 	=> $block->quantity,
-		// 'group' 	=> $block->delta,
-		// 'types'		=> explode(',',$block->types ),
-		// 'function'	=> $block->selection,
+	// //tr( $block );
+// 	
+	// //$display = 'jquery';
+// 	
+	// switch ($block->display) {
+		// case 'raw':
+			// // get sds
+			// // display ads 
+// 			
+			// $content['ads'] =   array('#markup' => 'ads display=raw' , '#type' => 'markup');
+// 			
+			// $aids = ad_select($block->quantity);
+			// $ads = ad_load_multiple($aids);
+			// $content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
+			// break;
+// 		
+		// case 'jquery':
+// 			
+			// //return "\n<div class=\"advertisement group-$group\" id=\"group-id-$id\">\n <script type=\"text/javascript\">\n//<![CDATA[\n  $(document).ready(function(){ jQuery(\"div#group-id-$id\").load(\"$display\"); });\n //]]>\n </script>\n</div>\n";
+// 			
+			// //$content['ads'] =  array('#markup' => 'ads display=jquery' , '#type' => 'markup');
+			// // http://ad.e-kugel.org/ad/jquery
+			// $load_url = url('/ad/jquery' , array(
+				// 'absolute' => true,
+				// 'query' => array('quantity' => $block->quantity)
+			// ));
+			// $content['ads'] = array(
+				// '#type' => 'html_tag',
+				// '#tag' => 'div',
+				// '#value' => "<div id='aaa-aaa'>aaa aaa aaa</div><script type=\"text/javascript\">\n//<![CDATA[\n (function ($) { $(document).ready(function(){ jQuery(\"div#ad-jquery-first\").load(\"$load_url\"); });})(jQuery);\n //]]>\n </script>",
+				// '#attributes' => array(
+// 					
+					// 'width' => '100%', 
+					// 'height' => '80px', 
+					// 'class' => 'ad-jquery',
+					// 'id' => 'ad-jquery-first',
+				// ),
+// 				
+			// );
+			// break;
+// 		
+		// case 'iframe':
+// 			
+			// $load_url = url('/ad/iframe' , array(
+				// 'absolute' => true,
+				// 'query' => array('quantity' => $block->quantity)
+			// ));
+// 			
+// 			
+			// $content['ads'] =  array(
+				// '#type' => 'html_tag',
+				// '#tag' => 'iframe',
+				// '#value' => '',
+				// '#attributes' => array(
+					// 'src' => $load_url,
+					// 'width' => '100%', 
+					// //'width' => '70px', 
+					// 'height' => '400px', 
+					// //'scrolling' => 'no',
+					// 'scrolling' => 'auto',
+					// 'frameborder' => 0,
+					// 'class' => 'ad-iframe',
+				// )
+			// );
+// 			
+// 			
+// 			
+			// break;
+// 		
+		// default:
+// 			
+			// break;
+	// }
+// 	
+// 	
+// 	
+	// //tr($block);
+	// //drupal_alter('ad2_blocks_params' , $block);
+// 	
+	// //tr( $block );
+	// // $view_mode = $block->view_mode;
+// // 	
+	// // $qp = array(
+		// // 'quantity' 	=> $block->quantity,
+		// // 'group' 	=> $block->delta,
+		// // 'types'		=> explode(',',$block->types ),
+		// // 'function'	=> $block->selection,
+	// // );
+// // 	
+	// // $response = new stdClass();
+	// // $response->ad2_ids 	= array();
+	// // $response->total 	= 0;
+// // 	
+  	// // //tr( $qp );
+// // 	
+	// // $ads = ad2($qp , $response );
+// // 	
+	// // //tr( $response );
+// // 	
+	// // // $ad2_nids = &drupal_static('ad2_nids' , array());
+	// // // foreach ($ads as $ad ) {
+		// // // if( $ad->nid)
+			// // // $ad2_nids[$delta][] = $ad->nid;
+	// // // }
+// // 	
+// // 	
+	// // //tr( $ads );
+// // 	
+	// // $content['ads'] = entity_view('ad2', $ads, $view_mode );
+	// // $content['pagination'] = array(
+		// // '#markup' => 'pagination here',
+	// // );
+// 	
+	// $return['content'] = $content;
+	// return $return;
+// }
+
+// 
+// function ad_block_configure($delta = ''){
+// 
+// 	
+// 	
+	// if ($delta) {
+    	// $custom_block = ad_get_block($delta);
+  	// } else {
+    	// $custom_block = array();
+  	// }
+// 
+	// //tr( $custom_block );
+// 
+	// /**
+	 // * if delta = 0 then it means the block in being created
+	 // */
+// 
+	// $form = array();
+// 
+	// $form['ad_info'] = array(
+		// '#type' => 'textfield',
+		// '#title' => 'כותרת בדף בלוקים',
+		// '#required' => true,
+		// //'#default_value' => isset($custom_block['info']) ? $custom_block['info'] : '',
+		// '#default_value' => isset($custom_block->info) ? $custom_block->info : '',
 	// );
-// 	
-	// $response = new stdClass();
-	// $response->ad2_ids 	= array();
-	// $response->total 	= 0;
-// 	
-  	// //tr( $qp );
-// 	
-	// $ads = ad2($qp , $response );
-// 	
-	// //tr( $response );
-// 	
-	// // $ad2_nids = &drupal_static('ad2_nids' , array());
-	// // foreach ($ads as $ad ) {
-		// // if( $ad->nid)
-			// // $ad2_nids[$delta][] = $ad->nid;
-	// // }
-// 	
-// 	
-	// //tr( $ads );
-// 	
-	// $content['ads'] = entity_view('ad2', $ads, $view_mode );
-	// $content['pagination'] = array(
-		// '#markup' => 'pagination here',
+// 
+	// $form['ad_quantity'] = array(
+		// '#type' => 'select',
+		// '#title' => 'מספר המודעות להציג',
+		// '#default_value' => isset($custom_block->quantity) ? $custom_block->quantity : 2, // variable_get( "ad_block_{$delta}_ads_number" , 10),
+		// '#options' => drupal_map_assoc(array(1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25, 30)),
 	// );
-	
-	$return['content'] = $content;
-	return $return;
-}
+// 
+    // // Provide hook for ad_display_TYPE modules to set display TYPE.
+  	// $display_options = array( 'jquery' => t('jQuery'),  'raw' => t('Raw') ,'iframe' => t('IFrame') );
+	// $form['ad_display'] = array(
+		// '#type' => 'radios',
+		// '#title' => 'שיטת תצוגת הבלוק',
+		// '#default_value' => isset($custom_block->display) ? $custom_block->display : 'jquery', //variable_get("ad_block_{$delta}_ads_display", 'jquery'),
+		// '#options' => $display_options,
+		// '#description' => t('This setting configures the default method for displaying advertisements on your website.  It is possible to override this setting when making direct calls to ad(), as described in the documentation.  Using the JavaScript, jQuery, and IFrame display methods allows you to display random ads and track impressions even on cached pages.  When using the Raw display method together with Drupal\'s page cache, impressions will be properly tracked but advertisements will only change when the page cache is updated.'),
+	// );
+// 
+// 
+	// $form['ad_view_mode'] = array(
+		// '#type' => 'radios',
+		// '#title' => t('View Mode'),
+		// '#default_value' =>isset($custom_block->view_mode) ? $custom_block->view_mode : 'teaser',// variable_get("ad_block_{$delta}_ads_view_mode", 'teaser'),
+		// '#options' => array('a' => 'a'),
+		// //'#description' => $description,
+	// );
+// 
+	// $options = array();
+// 
+	// //$names = node_type_get_names();
+	// foreach ( ad_types() as $key => $type ) {
+		// //tr( $key );
+		// //tr( $name );
+		// //$options[$key] = $name;
+		// $options[$key] = $type->label;
+		// //get_class_methods($type);
+	// }
+// 
+	// //die();
+// 	
+	// $form['ad_types'] = array(
+		// '#type' => 'checkboxes',
+		// '#title' => 'סוגי מודעות',
+		// '#default_value' => isset($custom_block->types) ? explode(',',$custom_block->types) : array(), // variable_get("ad_block_{$delta}_ads_type", array()),
+		// '#options' => $options,
+		// '#description' => 'here decription',
+	// );
+// 
+	// $pagination_options = array(
+		// 'none' => 'ללא',
+		// 'mini' => 'דפדוף מינימלי',
+	// );
+// 
+	// $form['ad_paginator'] = array(
+		// '#type' => 'radios',
+		// '#title' => 'דפדוף',
+		// '#options' => $pagination_options,
+		// '#default_value' => isset($custom_block->paginator) ? $custom_block->paginator : 'none', // variable_get("ad_block_{$delta}_ads_paginator", 'none'),
+	// );
+// 
+	// $selection_options = array();
+// 
+	// $modules = module_implements('ad_selection_info');
+	// //tr( $modules );
+// 
+	// foreach ( $modules as $module ){
+		// $options = module_invoke($module,'ad_selection_info');
+		// foreach ($options as $key => $info ) {
+			// $selection_options[$key] = $info['title'];
+		// }
+	// }
+	// //tr( $selection_options );
+// 
+	// $form['ad_selection'] = array(
+		// '#type' => 'radios',
+		// '#title' => 'פונקצית בחירת המודעות',
+		// '#options' => $selection_options ,
+		// '#default_value' => isset($custom_block->selection) ? $custom_block->selection : null, // variable_get("ad_block_{$delta}_ads_selection", 'ads'),
+	// );
+	// /**
+	 // * here is extention point
+	 // */
+// 
+// 
+  // $form['ad_taxonomy'] = array(
+  	// '#type' => 'fieldset',
+  	// '#title' => 'קטגוריות',
+  	// '#collapsible' => true,
+  	// '#collapsed' => true,
+  // );
+// 
+  // $terms = array();
+  // $tree = taxonomy_get_tree(1);
+  // foreach ($tree as $t ){
+  	// $terms[$t->tid] = str_repeat('-', $t->depth) . $t->name;
+  // }
+// 
+  // $form['ad_taxonomy']['ad_tids'] = array(
+  	// '#type' => 'checkboxes',
+  	// '#title' => 'קטגוריות',
+  	// '#options' => $terms,
+  	// //'#default_value' => isset($custom_block['tids']) ? explode(',',$custom_block['tids']) : array(),
+  // );
+// 
+// 
+	// return $form;
+// }
 
-
-function ad_block_configure($delta = ''){
-
-	
-	
-	if ($delta) {
-    	$custom_block = ad_get_block($delta);
-  	} else {
-    	$custom_block = array();
-  	}
-
-	//tr( $custom_block );
-
-	/**
-	 * if delta = 0 then it means the block in being created
-	 */
-
-	$form = array();
-
-	$form['ad_info'] = array(
-		'#type' => 'textfield',
-		'#title' => 'כותרת בדף בלוקים',
-		'#required' => true,
-		//'#default_value' => isset($custom_block['info']) ? $custom_block['info'] : '',
-		'#default_value' => isset($custom_block->info) ? $custom_block->info : '',
-	);
-
-	$form['ad_quantity'] = array(
-		'#type' => 'select',
-		'#title' => 'מספר המודעות להציג',
-		'#default_value' => isset($custom_block->quantity) ? $custom_block->quantity : 2, // variable_get( "ad_block_{$delta}_ads_number" , 10),
-		'#options' => drupal_map_assoc(array(1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 25, 30)),
-	);
-
-    // Provide hook for ad_display_TYPE modules to set display TYPE.
-  	$display_options = array( 'jquery' => t('jQuery'),  'raw' => t('Raw') ,'iframe' => t('IFrame') );
-	$form['ad_display'] = array(
-		'#type' => 'radios',
-		'#title' => 'שיטת תצוגת הבלוק',
-		'#default_value' => isset($custom_block->display) ? $custom_block->display : 'jquery', //variable_get("ad_block_{$delta}_ads_display", 'jquery'),
-		'#options' => $display_options,
-		'#description' => t('This setting configures the default method for displaying advertisements on your website.  It is possible to override this setting when making direct calls to ad(), as described in the documentation.  Using the JavaScript, jQuery, and IFrame display methods allows you to display random ads and track impressions even on cached pages.  When using the Raw display method together with Drupal\'s page cache, impressions will be properly tracked but advertisements will only change when the page cache is updated.'),
-	);
-
-
-	$form['ad_view_mode'] = array(
-		'#type' => 'radios',
-		'#title' => t('View Mode'),
-		'#default_value' =>isset($custom_block->view_mode) ? $custom_block->view_mode : 'teaser',// variable_get("ad_block_{$delta}_ads_view_mode", 'teaser'),
-		'#options' => array('a' => 'a'),
-		//'#description' => $description,
-	);
-
-	$options = array();
-
-	//$names = node_type_get_names();
-	foreach ( ad_types() as $key => $type ) {
-		//tr( $key );
-		//tr( $name );
-		//$options[$key] = $name;
-		$options[$key] = $type->label;
-		//get_class_methods($type);
-	}
-
-	//die();
-	
-	$form['ad_types'] = array(
-		'#type' => 'checkboxes',
-		'#title' => 'סוגי מודעות',
-		'#default_value' => isset($custom_block->types) ? explode(',',$custom_block->types) : array(), // variable_get("ad_block_{$delta}_ads_type", array()),
-		'#options' => $options,
-		'#description' => 'here decription',
-	);
-
-	$pagination_options = array(
-		'none' => 'ללא',
-		'mini' => 'דפדוף מינימלי',
-	);
-
-	$form['ad_paginator'] = array(
-		'#type' => 'radios',
-		'#title' => 'דפדוף',
-		'#options' => $pagination_options,
-		'#default_value' => isset($custom_block->paginator) ? $custom_block->paginator : 'none', // variable_get("ad_block_{$delta}_ads_paginator", 'none'),
-	);
-
-	$selection_options = array();
-
-	$modules = module_implements('ad_selection_info');
-	//tr( $modules );
-
-	foreach ( $modules as $module ){
-		$options = module_invoke($module,'ad_selection_info');
-		foreach ($options as $key => $info ) {
-			$selection_options[$key] = $info['title'];
-		}
-	}
-	//tr( $selection_options );
-
-	$form['ad_selection'] = array(
-		'#type' => 'radios',
-		'#title' => 'פונקצית בחירת המודעות',
-		'#options' => $selection_options ,
-		'#default_value' => isset($custom_block->selection) ? $custom_block->selection : null, // variable_get("ad_block_{$delta}_ads_selection", 'ads'),
-	);
-	/**
-	 * here is extention point
-	 */
-
-
-  $form['ad_taxonomy'] = array(
-  	'#type' => 'fieldset',
-  	'#title' => 'קטגוריות',
-  	'#collapsible' => true,
-  	'#collapsed' => true,
-  );
-
-  $terms = array();
-  $tree = taxonomy_get_tree(1);
-  foreach ($tree as $t ){
-  	$terms[$t->tid] = str_repeat('-', $t->depth) . $t->name;
-  }
-
-  $form['ad_taxonomy']['ad_tids'] = array(
-  	'#type' => 'checkboxes',
-  	'#title' => 'קטגוריות',
-  	'#options' => $terms,
-  	//'#default_value' => isset($custom_block['tids']) ? explode(',',$custom_block['tids']) : array(),
-  );
-
-
-	return $form;
-}
-
-
-function ad_block_save($delta = '', $edit = array()) {
-
-	$fields = array();
-
-	foreach ($edit as $k => $v ) {
-		if( substr($k, 0 , 3) == 'ad_' ){
-			$key = substr($k, 3);
-			$fields[$key] = $v;
-		}
-	}
-
-	$types = array();
-	foreach ($fields['types'] as $k => $v ) {
-		if( $v )
-			$types[] = $k;
-	}
-	$fields['types'] = implode(',',$types);
-
-	$tids = array();
-	foreach ($fields['tids'] as $k => $v ) {
-		if( $v )
-			$tids[] = $k;
-	}
-	sort($tids);
-	$fields['tids'] = implode(',',$tids);
-
-	db_update('ad_block')
-	    ->fields($fields)
-	    ->condition('delta', $delta)
-	    ->execute();
-
-}
-
+// 
+// function ad_block_save($delta = '', $edit = array()) {
+// 
+	// $fields = array();
+// 
+	// foreach ($edit as $k => $v ) {
+		// if( substr($k, 0 , 3) == 'ad_' ){
+			// $key = substr($k, 3);
+			// $fields[$key] = $v;
+		// }
+	// }
+// 
+	// $types = array();
+	// foreach ($fields['types'] as $k => $v ) {
+		// if( $v )
+			// $types[] = $k;
+	// }
+	// $fields['types'] = implode(',',$types);
+// 
+	// $tids = array();
+	// foreach ($fields['tids'] as $k => $v ) {
+		// if( $v )
+			// $tids[] = $k;
+	// }
+	// sort($tids);
+	// $fields['tids'] = implode(',',$tids);
+// 
+	// db_update('ad_block')
+	    // ->fields($fields)
+	    // ->condition('delta', $delta)
+	    // ->execute();
+// 
+// }
+// 
 
 
 function ad_select($quantity){
@@ -900,50 +881,50 @@ function ad_select($quantity){
 	return $aids;
 }
 
+// 
+// 
+// function ad_iframe(){
+// 	
+// 	
+	// $quantity = $_GET['quantity'];
+// 	
+	// $aids = ad_select($quantity); // $q->execute()->fetchCol();
+// 	 
+	// $ads = ad_load_multiple($aids);
+	// $content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
+// 		
+	// return drupal_render($content);
+// 	
+// }
+// 
+// function ad_iframe_delivery_callback($page_callback_result){
+// 	
+	// print $page_callback_result;
+	// //print 'here iframe delivery'; //$page_callback_result;
+// }
 
 
-function ad_iframe(){
-	
-	
-	$quantity = $_GET['quantity'];
-	
-	$aids = ad_select($quantity); // $q->execute()->fetchCol();
-	 
-	$ads = ad_load_multiple($aids);
-	$content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
-		
-	return drupal_render($content);
-	
-}
-
-function ad_iframe_delivery_callback($page_callback_result){
-	
-	print $page_callback_result;
-	//print 'here iframe delivery'; //$page_callback_result;
-}
-
-
-
-
-function ad_jquery(){
-	
-	$quantity = $_GET['quantity'];
-	
-	$aids = ad_select($quantity);
-	
-	 
-	$ads = ad_load_multiple($aids);
-	$content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
-			
-			
-	$d = array(
-		'#markup' => 'here jquery response',
-		'#type' => 'markup',
-	);
-	
-	return drupal_render($content);
-
-}
+// 
+// 
+// function ad_jquery(){
+// 	
+	// $quantity = $_GET['quantity'];
+// 	
+	// $aids = ad_select($quantity);
+// 	
+// 	 
+	// $ads = ad_load_multiple($aids);
+	// $content['ads'] = entity_view('ad', $ads, 'ad', NULL, true);
+// 			
+// 			
+	// $d = array(
+		// '#markup' => 'here jquery response',
+		// '#type' => 'markup',
+	// );
+// 	
+	// return drupal_render($content);
+// 
+// }
 
 
 function ad_theme(){
@@ -967,6 +948,7 @@ function ad_redirect(){
 	// here we log the click and then redirect to whereever
 	$ad = ad_load($aid);
 	
+	//ad_clicked($ad);
 	$url = $ad->url;
 	$goto = $url;
 	
@@ -977,5 +959,33 @@ function ad_redirect(){
 	//tr( $ad );
 	//die();
 	drupal_goto($goto);
+}
+
+
+function ad_preprocess_entity(&$variables){
+	
+	if( $variables['entity_type'] != 'ad')
+		return;
+	
+	$ad = $variables['ad'];
+	
+	$uri = entity_uri('ad', $ad);
+	
+	$variables['ad_uri']['path'] 	= $uri['path'];
+	$variables['ad_uri']['options'] = $uri['options'];
+	
+}
+
+
+function ad_process_entity(&$variables){
+	
+	if( $variables['entity_type'] != 'ad')
+		return;
+	
+	$ad = $variables['ad'];
+	
+	$uri = $variables['ad_uri'];
+	$variables['url'] = $uri ? url($uri['path'], $uri['options']) : FALSE;
+	
 }
 

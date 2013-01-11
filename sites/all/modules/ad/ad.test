@@ -1,0 +1,443 @@
+<?php
+
+abstract class AdTestCase extends DrupalWebTestCase {
+	public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+	
+	
+  public function createAdType(){
+  	
+	$def = array(
+		'type' => strtolower(  $this->randomName(4) ) , 
+		'label' => $this->randomString(6),
+		'description' => '',
+	);
+	
+	$type = (object) $def;
+	ad_type_save($type);
+		
+	return $type;
+  }
+  
+  
+  public function createAd($type = null , $settings = array() ){
+  	
+		if( ! $type ){
+			$ad_type = $this->createAdType();
+			$type = $ad_type->type;
+		}
+		
+		$settings += array(
+    		'title' => $this->randomString(6),
+      		'url' => '',
+      		'weight'	=> 0,
+      		'size'	=> '',
+      		'created' => REQUEST_TIME,
+      		'changed' => REQUEST_TIME,
+      		//'uid' => 1, // $user->uid,
+      		'status' => 1,
+      		'type' => $type
+		);
+		
+		// If the node's user uid is not specified manually, use the currently
+    // logged in user if available, or else the user running the test.
+    if (!isset($settings['uid'])) {
+      if ($this->loggedInUser) {
+        $settings['uid'] = $this->loggedInUser->uid;
+      }
+      else {
+        global $user;
+        $settings['uid'] = $user->uid;
+      }
+    }
+	
+		$ad = (object) $settings;
+		ad_save($ad);
+		
+		return $ad;
+		
+  }
+  
+  
+}
+
+/**
+* Administration tests for my module.
+*/
+class AdTypeFunctionsTestCase extends AdTestCase {
+ 
+	
+/**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Type Functions'),
+      'description' => t('First tests for Ad module.'),
+      'group' => t('Ad'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+  
+  
+  public function testAdTypeFunctions() {
+  	
+		$ad_type0 = new stdClass;
+		$ad_type0->type = 'default0';
+		$ad_type0->label = 'default0 label';
+		$ad_type0->description = '';
+		ad_type_save($ad_type0);
+		
+		$ad_type00 = ad_type_load('default0');
+		$this->assertEqual( $ad_type00->label , 'default0 label' , 'label on create ad type resolves to ' . 'default0 label' );
+		
+		
+		$ad_type1 = new AdType(array(
+			'type' => 'default1' , 
+			'label' => 'default1 label',
+			'description' => ''
+		));
+		ad_type_save($ad_type1);
+		
+		$ad_type2 = ad_type_load('default1');
+		$this->assertEqual( $ad_type2->label , 'default1 label' , 'label on create ad type resolves to ' . 'default1 label' );
+		
+		$types = ad_types();
+		$this->assertEqual( count($types) , 2 , 'count on ad types resolves to ' . count($types) );
+		
+		ad_type_delete($ad_type2);
+		
+		$types2 = ad_types();
+		$this->assertEqual( count($types2) , 1 , 'count on ad types resolves to ' . count($types2) );
+		
+  }
+  
+  
+  
+}
+
+/**
+* Administration tests for my module.
+*/
+class AdUserUidTestCase extends AdTestCase {
+ 
+	
+/**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad User uid'),
+      'description' => t('Check created ad has uid.'),
+      'group' => t('Ad'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+  
+  
+  public function testNewAdHasUser() {
+  	
+		$user = $this->drupalCreateUser(array('administer ad entities' , 'create ad entities'));
+		$this->drupalLogin($user);
+		
+		//$user =
+		 
+		$ad = $this->createAd();
+		
+		$ad = ad_load(1);
+		$this->assertEqual( $ad->uid , $user->uid , 'ad user resolves to ' . 'current user uid' );
+		
+  }
+  
+  
+  
+}
+
+/**
+* Administration tests for my module.
+*/
+class AdFunctionsTestCase extends AdTestCase {
+ 
+/**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Functions'),
+      'description' => t('First tests for Ad module.'),
+      'group' => t('Ad'),
+    );
+  }
+  
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+  
+  public function testAdFunctions() {
+  	
+		$type = $this->createAdType();
+		$ad = $this->createAd($type->type);
+		
+		$id = $ad->aid;
+		$ad1 = ad_load($id);
+		$this->assertEqual( $ad1->title , $ad->title , 'label on create ad type resolves to ' . $ad->title );
+	
+		ad_delete($ad1);
+		$ad2 = ad_load($id);
+		$this->assertEqual( $ad2 , null , 'label on create ad type resolves to null'  );
+	
+  }
+  
+}
+
+
+class AdCreateAdTypeTestCase extends AdTestCase {
+
+	public static function getInfo() {
+    return array (
+      'name' => t('Create Ad Type'),
+      'description' => t('test ad type form.'),
+      'group' => t('Ad'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+  
+  public function testCreateAdType() {
+  		
+		
+		$user = $this->drupalCreateUser(array('administer ad types'));
+		$this->drupalLogin($user);
+		
+		$this->drupalGet('admin/structure/ad-types/add');
+		$this->assertResponse(200 , 'Ad reports Allowed to user with premission');
+		
+		
+		$label = $this->randomString(6);
+		$type = strtolower(  $this->randomName(4) );
+		
+		$edit = array(
+		  'label' => $label,
+		  'type' => $type,
+	
+		);
+		$this->drupalPost('admin/structure/ad-types/add', $edit, 'Save Ad type');
+		
+		$this->drupalGet('admin/structure/ad-types/manage/' . $type );
+		$this->assertResponse(200 , 'Ad type page exists');
+		
+		$adtype = ad_type_load($type);
+		$this->assertEqual( $adtype->label , $label , 'label on create ad type resolves to ' . $label );
+		$this->assertEqual( $adtype->type , $type , 'type on create ad type resolves to ' . $type );
+  }
+  
+}
+
+
+
+class AdReportPageTestCase extends AdTestCase {
+ 
+	public $ad_type;
+/**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Report Page'),
+      'description' => t('test the report page.'),
+      'group' => t('Ad'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+  
+  
+  public function testAdReportPage() {
+  	
+		$this->assertTrue(db_table_exists('ad') , 'ad table exists');
+		$this->assertTrue(db_table_exists('ad_type') , 'ad_type table exists');
+		$this->assertTrue( entity_get_info('ad') , 'entity ad exists');
+		
+		$this->drupalGet('admin/reports/ad');
+		$this->assertResponse(403 , 'Ad reports Not Allowed to user without premission');
+		
+		$type1 = strtolower(  $this->randomName(4) );
+		$type2 = strtolower(  $this->randomName(5) );
+		$this->createAd($type1);
+		$this->createAd($type1);
+		$this->createAd($type2);
+		
+		$user = $this->drupalCreateUser(array('administer ad entities'));
+		
+		$this->drupalLogin($user);
+		$this->drupalGet('admin/reports/ad');
+		$this->assertResponse(200 , 'Ad reports Allowed to user with premission');
+		
+	}
+  
+ }
+
+
+class AdCreatePageTestCase extends AdTestCase {
+ 
+	public $ad_type;
+/**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Create Page'),
+      'description' => t('create ad form test.'),
+      'group' => t('Ad'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+  
+  
+  
+  public function testAdCreatePage() {
+  	
+		$type = $this->createAdType();
+		$type1 = $type->type; // strtolower($this->randomName(4));
+		
+		$this->drupalGet('ad/add/' . $type1 );
+		$this->assertResponse(403 , 'Ad Create Page Not Allowed to user without premission');
+		
+		$user = $this->drupalCreateUser(array('create ad entities' , 'view ad entities'));
+		
+		$this->drupalLogin($user);
+		$this->drupalGet('ad/add/' . $type1 );
+		$this->assertResponse(200 , 'Ad Create Pag Allowed to user with premission');
+		
+		
+		$title = $this->randomString(6);
+		//$type = strtolower(  $this->randomName(4) );
+		
+		$edit = array(
+		  'title' => $title,
+		  //'url' => 'node',
+		 // 'size' => 'xxl',
+		  //'type' => $type,
+	
+		);
+		
+		$this->drupalPost('ad/add/' . $type1, $edit, 'Save Ad');
+		$this->assertRaw(t('Ad %title saved.', array('%title' => $edit['title'])));
+		
+	}
+  
+  
+}
+
+
+class AdEditPageTestCase extends AdTestCase {
+ 
+	public $ad_type;
+/**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Edit Page'),
+      'description' => t('Edit Ad form.'),
+      'group' => t('Ad'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+  
+  
+  public function testAdEditPage() {
+  	
+		
+		$ad = $this->createAd();
+		
+		$this->drupalGet('ad/' . $ad->aid . '/edit' );
+		$this->assertResponse(403 , 'Ad Edit Page Not Allowed to user without premission');
+		
+		//return;
+		
+		$user = $this->drupalCreateUser(array('edit any ad entities' , 'view ad entities'));
+		
+		$this->drupalLogin($user);
+		$this->drupalGet('ad/' . $ad->aid . '/edit' );
+		$this->assertResponse(200 , 'Ad Create Pag Allowed to user with premission');
+		
+		
+		$title = $this->randomString(6);
+		//$type = strtolower(  $this->randomName(4) );
+		
+		$edit = array(
+		  'title' => $title,
+		  // 'url' => 'node',
+		  //'size' => 'xxl',
+		);
+		
+		$this->drupalPost('ad/' . $ad->aid . '/edit', $edit, 'Save Ad');
+		$this->assertRaw(t('Ad %title saved.', array('%title' => $edit['title'])));
+		$this->assertNotEqual($title,$ad->title,'Title has changed');
+		
+	}
+  
+  
+  }
+
+class AdViewPageTestCase extends AdTestCase {
+ 
+	public $ad_type;
+/**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad View Page'),
+      'description' => t('test view page of ad.'),
+      'group' => t('Ad'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad');
+  }
+  
+  
+  public function testAdViewPage() {
+  	
+		
+		$ad = $this->createAd();
+		
+		$this->drupalGet('ad/' . $ad->aid );
+		$this->assertResponse(403 , 'Ad Edit Page Not Allowed to user without premission');
+		
+		//return;
+		
+		$user = $this->drupalCreateUser(array( 'view ad entities'));
+		
+		$this->drupalLogin($user);
+		$this->drupalGet('ad/' . $ad->aid  );
+		$this->assertResponse(200 , 'Ad Create Pag Allowed to user with premission');
+		
+		
+		
+	}
+  
+  
+}

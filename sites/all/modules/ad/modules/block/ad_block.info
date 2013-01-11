@@ -1,0 +1,12 @@
+name = Ads Blocks
+description = provieds blocks for ads system
+package = Ads
+
+core = 7.x
+
+
+dependencies[] = ad
+
+
+files[] = ad_block.test
+

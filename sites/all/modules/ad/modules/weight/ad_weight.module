@@ -1,0 +1,21 @@
+<?php
+
+function ad_weight_query_alter( $query ) {
+
+	if( $query->hasTag('ad_ids')  ){
+		
+		$fields =& $query->getFields();
+		$expressions =& $query->getExpressions();
+		$tables =& $query->getTables();
+		$order =& $query->getOrderBy();
+		$where =& $query->conditions();
+		$having =& $query->havingConditions();
+
+		$block = $query->getMetaData('block');
+		
+		
+		$q->addExpression('rand() * weight' , 'score');
+		$q->orderBy('score');
+	
+	}
+}

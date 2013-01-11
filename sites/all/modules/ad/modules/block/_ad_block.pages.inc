@@ -13,14 +13,15 @@ function ad_view($ad) {
 function ad_report_page(){
 	
 	
-	$res = db_query('select count(*) as total , type , status from {ad} group by type, status' )->fetchAll();
+	//$res = db_query('select count(*) as total , type , adstatus from {ad} group by type, adstatus' )->fetchAll();
+	$res = db_query('select count(*) as total , type  from {ad} group by type' )->fetchAll();
 	//tr( $res );
 	
 	$rows = array();
 	foreach ($res as $r) {
 		$rows[] = array(
 			$r->type,
-			$r->status,
+			//$r->adstatus,
 			$r->total,
 		);
 	}
@@ -28,9 +29,9 @@ function ad_report_page(){
 	$build = array(
 		'#theme' => 'table',
 		'#rows' => $rows ,
-		'#header' => array('ad type' , 'ad status' , 'ad count'),
+		'#header' => array('ad type' ,/* 'ad status' ,*/ 'ad count'),
 	);
 	
 	return $build;
-	return 'here report page: put number of ads and thier types / statuses';
+	
 }

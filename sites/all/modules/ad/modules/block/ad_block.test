@@ -1,0 +1,294 @@
+<?php
+
+
+// ad check for block to show certain types
+
+/**
+* Administration tests for my module.
+*/
+abstract class AdBlockTestCase extends DrupalWebTestCase {
+ 
+	
+  public function createAdType(){
+  	
+	$def = array(
+		'type' => strtolower(  $this->randomName(4) ) , 
+		'label' => $this->randomString(6),
+		'description' => '',
+	);
+	
+	$type = (object) $def;
+	ad_type_save($type);
+		
+	return $type;
+  }
+  
+  
+  public function createAd($type = null ){
+  	
+		if( ! $type ){
+			$ad_type = $this->createAdType();
+			$type = $ad_type->type;
+		}
+		
+		$ad_def = array(
+    		'title' => $this->randomName(6),
+      		'url' => '',
+      		'weight'	=> 0,
+      		'size'	=> '',
+      		'created' => REQUEST_TIME,
+      		'changed' => REQUEST_TIME,
+      		'uid' => 1, // $user->uid,
+      		'status' => 1,
+      		'type' => $type
+		);
+		
+		$ad = (object) $ad_def;
+		ad_save($ad);
+		
+		return $ad;
+		
+  }
+  
+}
+
+/**
+* Administration tests for my module.
+*/
+class AdBlockCreateFormTestCase extends AdBlockTestCase {
+ 
+	
+/**
+   * Implements getInfo().
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Block Create Block'),
+      'description' => t('Check for Blcok Premissions. check fields on form'),
+      'group' => t('Ad Block'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad_block');
+  }
+  
+  public function testCreateBlockForm() {
+  		
+		$this->drupalGet('admin/structure/block/add-ad-block');
+		$this->assertResponse(403 , 'Ad Blocks add new block page not Allowed for user without premission');
+		
+		$type1 = $this->createAdType();
+		$type2 = $this->createAdType();
+		
+		$user = $this->drupalCreateUser(array('administer ad entities' , 'administer blocks' , 'administer ad blocks'));
+		$this->drupalLogin($user);
+		$this->drupalGet('admin/structure/block/add-ad-block');
+		$this->assertResponse(200 , 'Ad reports Allowed to user with premission');
+		
+		$this->assertFieldById('edit-ad-quantity', 2, 'The edit-ad-quantity field is set correctly');
+		
+		$this->assertFieldById('edit-ad-types-' . $type1->type , '' , 'The edit-ad-types field is set correctly');
+		$this->assertFieldById('edit-ad-types-' . $type2->type , '' , 'The edit-ad-types field is set correctly');
+		$this->assertNoFieldById('edit-ad-types-' . 'stam' , '' , 'The edit-ad-types field is set correctly');
+		
+  }
+  
+}
+
+
+class AdBlockInsertFormTestCase extends AdBlockTestCase {
+ 
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Block Insert Block'),
+      'description' => t('Insert Block.'),
+      'group' => t('Ad Block'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad_block');
+  }
+  
+  public function testInsertBlockForm() {
+  		
+		$type1 = $this->createAdType();
+		$type2 = $this->createAdType();
+		
+		$user = $this->drupalCreateUser(array('administer ad entities' , 'administer blocks' , 'administer ad blocks'));
+		$this->drupalLogin($user);
+		$this->drupalGet('admin/structure/block/add-ad-block');
+		$this->assertResponse(200 , 'Ad reports Allowed to user with premission');
+		
+		
+		// Set block title to confirm that the interface is available.
+    	$this->drupalPost('admin/structure/block/add-ad-block', array(
+    		'title' => $this->randomName(8),
+    		'ad_info' => $this->randomString(),
+    		'ad_quantity' => 3,
+		), t('Save block'));
+    	$this->assertText(t('The block has been created.'), t('Block configuration set.'));
+
+		$this->assertLinkByHref('admin/structure/block/add-ad-block', 0, 'A link to adding block appears on the page');
+		$this->assertLinkByHref('admin/structure/block/manage/ad_block/1', 0, 'A link to edit block 1 appears on the page');
+    	
+    	$this->drupalGet('admin/structure/block');
+		$this->assertLinkByHref('admin/structure/block/manage/ad_block/1', 0, 'A link to edit block 1 appears on the page');
+    	
+		
+    	// Set the block to a region to confirm block is available.
+    	//$edit = array();
+    	//$edit['blocks[ad_block_1][region]'] = 'footer';
+    	//$this->drupalPost('admin/structure/block', $edit, t('Save blocks'));
+    	//$this->assertText(t('The block settings have been updated.'), t('Block successfully move to footer region.'));
+  }
+  
+  
+}
+
+class AdBlockViewBlockTestCase extends AdBlockTestCase {
+ 
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Block View'),
+      'description' => t('Check that the block shows.'),
+      'group' => t('Ad Block'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad_block');
+  }
+  
+  public function testBlockView() {
+  		
+		$type1 = $this->createAdType();
+		$type2 = $this->createAdType();
+		
+		$user = $this->drupalCreateUser(array('administer ad entities' , 'administer blocks' , 'administer ad blocks'));
+		$this->drupalLogin($user);
+		
+		// Set block title to confirm that the interface is available.
+    	$this->drupalPost('admin/structure/block/add-ad-block', array(
+    		'title' => $this->randomName(8),
+    		'ad_info' => $this->randomString(),
+    		'ad_quantity' => 3,
+		), t('Save block'));
+    	$this->assertText(t('The block has been created.'), t('Block configuration set.'));
+
+		
+    	// Set the block to a region to confirm block is available.
+    	$edit = array();
+    	$edit['blocks[ad_block_1][region]'] = 'footer';
+    	$this->drupalPost('admin/structure/block', $edit, t('Save blocks'));
+   		$this->assertText(t('The block settings have been updated.'), t('Block successfully move to footer region.'));
+		
+		$ad1 = $this->createAd($type1->type);
+		$ad2 = $this->createAd($type1->type);
+		$ad3 = $this->createAd($type1->type);
+		//$this->createAd($type1->type);
+		//$this->createAd($type1->type);
+		//$this->createAd($type1->type);
+		//$this->createAd($type1->type);
+		
+		$delta = 1;
+		$block = ad_block_get_block($delta);
+		
+		$aids = ad_block_select($block);
+		$this->assertEqual(count($aids) , 3 , 'ad count resolves to 3');
+		
+		$this->drupalGet('');
+		$this->assertText($ad1->title, t('Ad Present On Page.'));
+		$this->assertText($ad2->title, t('Ad Present On Page.'));
+		$this->assertText($ad3->title, t('Ad Present On Page.'));
+		
+  }
+  
+  
+}
+
+class AdBlockBlockViewRespectsTypesTestCase extends AdBlockTestCase {
+ 
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Block Block View Respects Types'),
+      'description' => t('Check that the block shows on specified types.'),
+      'group' => t('Ad Block'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad_block');
+  }
+  
+  public function testBlockView() {
+  		
+		$type1 = $this->createAdType();
+		$type2 = $this->createAdType();
+		
+		$user = $this->drupalCreateUser(array('administer ad entities' , 'administer blocks' , 'administer ad blocks'));
+		$this->drupalLogin($user);
+		
+		$edit = array(
+    		'title' => $this->randomName(8),
+    		'ad_info' => $this->randomString(),
+    		'ad_quantity' => 4,
+    		//'ad_types' => array($type1->type),
+		);
+		$edit["ad_types[{$type1->type}]"] = $type1->type;
+		// Set block title to confirm that the interface is available.
+    	$this->drupalPost('admin/structure/block/add-ad-block', $edit, t('Save block'));
+    	$this->assertText(t('The block has been created.'), t('Block configuration set.'));
+
+		$delta = 1;
+		$block = ad_block_get_block($delta);
+		
+		$aids = ad_block_select($block);
+		$ads = ad_load_multiple($aids);
+		foreach ($ads as $ad) {
+			$this->assertEqual($ad->type , $type1->type , 'ad types resolves to ' . $type1->type );
+		}
+		
+    	// Set the block to a region to confirm block is available.
+    	$edit = array();
+    	$edit['blocks[ad_block_1][region]'] = 'footer';
+    	$this->drupalPost('admin/structure/block', $edit, t('Save blocks'));
+   		$this->assertText(t('The block settings have been updated.'), t('Block successfully move to footer region.'));
+		
+		$ad1 = $this->createAd($type1->type);
+		$ad2 = $this->createAd($type1->type);
+		$ad3 = $this->createAd($type1->type);
+		$ad4 = $this->createAd($type1->type);
+		
+		$ad5 = $this->createAd($type2->type);
+		$ad6 = $this->createAd($type2->type);
+		$ad7 = $this->createAd($type2->type);
+		$ad8 = $this->createAd($type2->type);
+		
+		
+		
+		
+		$aids = ad_block_select($block);
+		
+		
+		$this->assertEqual(count($aids) , 4 , 'ad count resolves to 3');
+		
+		$this->drupalGet('');
+		$this->assertText($ad1->title, t('Ad Present On Page.'));
+		$this->assertText($ad2->title, t('Ad Present On Page.'));
+		$this->assertText($ad3->title, t('Ad Present On Page.'));
+		$this->assertText($ad4->title, t('Ad Present On Page.'));
+		
+		
+		$this->assertNoText($ad5->title, t('Ad Not Present On Page.'));
+		$this->assertNoText($ad6->title, t('Ad Not Present On Page.'));
+		$this->assertNoText($ad7->title, t('Ad Not Present On Page.'));
+		$this->assertNoText($ad8->title, t('Ad Not Present On Page.'));
+		
+		
+		
+  }
+  
+  
+}

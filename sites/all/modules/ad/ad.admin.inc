@@ -193,7 +193,7 @@ function ad_form($form, &$form_state, $ad) {
     '#default_value' => $ad->status,
   );
 
-
+/*
   $form['url'] = array(
     '#type' => 'textfield',
     '#title' => t('Url'),
@@ -201,7 +201,7 @@ function ad_form($form, &$form_state, $ad) {
     '#required' => true,
     '#description' => t('the url to redirect when clicking the ad. put <self> to redirect to ad entity view' ),
   );
-
+*/
 
   $form['weight'] = array(
     '#type' => 'textfield',
@@ -211,13 +211,14 @@ function ad_form($form, &$form_state, $ad) {
     '#required' => true,
   );
 
-
+/*
   $form['size'] = array(
     '#type' => 'textfield',
     '#title' => t('Size'),
     '#default_value' => $ad->size,
     '#required' => true,
   );
+*/
 
   $form['uid'] = array(
     '#type' => 'value',
@@ -258,7 +259,7 @@ function ad_form($form, &$form_state, $ad) {
 }
 
 function ad_form_validate($form, &$form_state) {
-
+	// weight should be greater then zero , if it is zero then it will not show
 }
 
 /**
@@ -275,7 +276,7 @@ function ad_form_submit($form, &$form_state) {
 
   $form_state['redirect'] = $task_uri['path'];
 
-  drupal_set_message(t('Task %title saved.', array('%title' => entity_label('ad', $task))));
+  drupal_set_message(t('Ad %title saved.', array('%title' => entity_label('ad', $task))));
 }
 
 function ad_form_submit_delete($form, &$form_state) {
