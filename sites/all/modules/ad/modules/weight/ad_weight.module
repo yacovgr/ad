@@ -1,21 +1,55 @@
 <?php
 
+
+
+function ad_weight_schema_alter(&$schema) {
+	
+  if (isset($schema['ad'])) {
+    $schema['ad']['fields']['weight'] = array(
+      'type' => 'numeric',
+      'precision' => 10,
+      'scale' => 2,
+      'not null' => FALSE,
+      'description' => 'The weight of the ad.',
+       'default' => 1,
+    );
+  }
+}
+
+
+
 function ad_weight_query_alter( $query ) {
 
-	if( $query->hasTag('ad_ids')  ){
+	if( $query->hasTag('ad_select')  ){
 		
-		$fields =& $query->getFields();
-		$expressions =& $query->getExpressions();
-		$tables =& $query->getTables();
-		$order =& $query->getOrderBy();
-		$where =& $query->conditions();
-		$having =& $query->havingConditions();
+		// $fields =& $query->getFields();
+		// $expressions =& $query->getExpressions();
+		// $tables =& $query->getTables();
+		// $order =& $query->getOrderBy();
+		// $where =& $query->conditions();
+		// $having =& $query->havingConditions();
 
-		$block = $query->getMetaData('block');
+		$request = $query->getMetaData('request');
 		
 		
-		$q->addExpression('rand() * weight' , 'score');
-		$q->orderBy('score');
+		$query->addExpression('rand() * a.weight' , 'score');
+		$query->orderBy('score' , 'desc');
 	
+	}
+}
+
+function ad_weight_form_alter(&$form, &$form_state, $form_id){
+	
+	if( $form_id == 'ad_form'){
+		
+	  $ad =  $form_state['ad'];
+		
+	  $form['weight'] = array(
+	    '#type' => 'textfield',
+	    '#title' => t('Weight'),
+	    '#default_value' => $ad->weight,
+	    '#size' => 5,
+	    '#required' => true,
+	  );
 	}
 }

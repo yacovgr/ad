@@ -418,16 +418,6 @@ function ad_entity_property_info_alter(&$info) {
     'schema field' => 'uid',
   );
   
-  // $properties['phone'] = array(
-    // 'label' => t("Phone"),
-    // 'type' => 'text',
-    // 'description' => t("Phone Number."),
-    // //'setter callback' => 'entity_property_verbatim_set',
-    // //'setter permission' => 'administer ads entities',
-    // //'required' => TRUE,
-    // 'schema field' => 'phone',
-  // );
-  
 }
 
 
@@ -867,14 +857,27 @@ function ad_get_block($delta){
 // 
 
 
-function ad_select($quantity){
+function ad_select( stdClass $request ){
 	
 	
 	$q = db_select('ad' , 'a');
+	$q->addTag('ad_select');
+	$q->addMetaData('request', $request);
+	
 	$q->fields('a' , array('aid'));
-	$q->orderRandom();
-	//$q->range(0,$block->quantity);
-	$q->range(0,$quantity);
+	$q->condition('status' , 1 );
+	//$q->orderRandom();
+	
+	if( isset($request->quantity)){
+		$q->range(0,$request->quantity);
+	}
+	
+	if( isset($request->types) && $request->types ){
+		$types = is_array($request->types) ? $request->types : explode(',' , $request->types );
+		$q->condition('type' , $types , 'IN');
+	}
+	
+	
 	
 	$aids = $q->execute()->fetchCol();
 	

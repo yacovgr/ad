@@ -1,1 +1,162 @@
 <?php
+
+
+/**
+* Administration tests for my module.
+*/
+abstract class AdWeightTestCase extends DrupalWebTestCase {
+ 
+	
+  public function createAdType(){
+  	
+	$def = array(
+		'type' => strtolower(  $this->randomName(4) ) , 
+		'label' => $this->randomString(6),
+		'description' => '',
+	);
+	
+	$type = (object) $def;
+	ad_type_save($type);
+		
+	return $type;
+  }
+  
+  
+  public function createAd($type = null , $settings = array() ){
+  	
+		if( ! $type ){
+			$ad_type = $this->createAdType();
+			$type = $ad_type->type;
+		}
+		
+		$settings += array(
+    		'title' => $this->randomName(6),
+      		//'url' => '',
+      		//'weight'	=> 0,
+      		//'size'	=> '',
+      		'created' => REQUEST_TIME,
+      		'changed' => REQUEST_TIME,
+      		'uid' => 1, // $user->uid,
+      		'status' => 1,
+      		'type' => $type
+		);
+		
+		$ad = (object) $settings;
+		ad_save($ad);
+		
+		return $ad;
+		
+  }
+  
+}
+
+
+class AdWeightProbabilityOrderTestCase extends AdWeightTestCase {
+ 
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Weight Block View Order Randomly'),
+      'description' => t('Check that Block View Order Ads Randomly according to weight.'),
+      'group' => t('Ad Weight'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad_block' , 'ad_weight');
+  }
+  
+  public function testBlockView() {
+  		
+		$type1 = $this->createAdType();
+		$type2 = $this->createAdType();
+		
+		$user = $this->drupalCreateUser(array('administer ad entities' , 'administer blocks' , 'administer ad blocks'));
+		$this->drupalLogin($user);
+		
+		$edit = array(
+    		'title' => $this->randomName(8),
+    		'ad_info' => $this->randomString(),
+    		'ad_quantity' => 2,
+    		//'ad_types' => array($type1->type),
+		);
+		$edit["ad_types[{$type1->type}]"] = $type1->type;
+		// Set block title to confirm that the interface is available.
+    	$this->drupalPost('admin/structure/block/add-ad-block', $edit, t('Save block'));
+    	$this->assertText(t('The block has been created.'), t('Block configuration set.'));
+
+		$delta = 1;
+		$block = ad_block_get_block($delta);
+		
+		// $aids = ad_block_select($block);
+		// $ads = ad_load_multiple($aids);
+		// foreach ($ads as $ad) {
+			// $this->assertEqual($ad->type , $type1->type , 'ad types resolves to ' . $type1->type );
+		// }
+		
+    	// Set the block to a region to confirm block is available.
+    	// $edit = array();
+    	// $edit['blocks[ad_block_1][region]'] = 'footer';
+    	// $this->drupalPost('admin/structure/block', $edit, t('Save blocks'));
+   		// $this->assertText(t('The block settings have been updated.'), t('Block successfully move to footer region.'));
+// 		
+
+		// this is where i need to put the weights in the ads
+		$ad1 = $this->createAd($type1->type);
+		
+		$this->assertTrue(isset($ad1->weight) , 'ad->weight is set: ' . $ad1->weight );
+		$this->assertEqual($ad1->weight , 1 , 'ad weight resolves to ' . $ad1->weight );
+		
+		
+		
+		$ad2 = $this->createAd($type1->type , array('weight' => 10));
+		$this->assertEqual($ad2->weight , 10 , 'ad weight resolves to ' . $ad2->weight );
+		
+		$ad = ad_load($ad2->aid );
+		$this->assertEqual($ad->weight , 10 , 'ad weight resolves to ' . $ad->weight );
+		
+		$ad3 = $this->createAd($type1->type, array('weight' => 0));
+		$this->assertEqual($ad3->weight , 0 , 'ad weight resolves to ' . $ad3->weight );
+		
+		$ad4 = $this->createAd($type1->type, array('weight' => 0.5));
+		$this->assertEqual($ad4->weight , 0.5 , 'ad weight resolves to ' . $ad4->weight );
+		
+		
+		$probability = array();
+		for( $x = 0 ; $x < 50 ; $x++ ){
+			$aids = ad_block_select($block);
+			foreach ($aids as $aid ) {
+				if( isset($probability[$aid])){
+					$probability[$aid]++;
+				} else {
+					$probability[$aid] = 1;
+				}
+			}
+		}
+		debug($probability);
+		$this->assertFalse(array_key_exists($ad3->aid, $probability));
+		$this->assertTrue($probability[$ad2->aid] > $probability[$ad1->aid]);
+		$this->assertTrue($probability[$ad1->aid] > $probability[$ad4->aid]);
+		//$this->assertFalse(array_key_exists($ad3->aid, $probability));
+		
+		
+// 		
+		// $this->assertEqual(count($aids) , 4 , 'ad count resolves to 3');
+// 		
+		// $this->drupalGet('');
+		// $this->assertText($ad1->title, t('Ad Present On Page.'));
+		// $this->assertText($ad2->title, t('Ad Present On Page.'));
+		// $this->assertText($ad3->title, t('Ad Present On Page.'));
+		// $this->assertText($ad4->title, t('Ad Present On Page.'));
+// 		
+// 		
+		// $this->assertNoText($ad5->title, t('Ad Not Present On Page.'));
+		// $this->assertNoText($ad6->title, t('Ad Not Present On Page.'));
+		// $this->assertNoText($ad7->title, t('Ad Not Present On Page.'));
+		// $this->assertNoText($ad8->title, t('Ad Not Present On Page.'));
+// 		
+// 		
+// 		
+  }
+  
+  
+}

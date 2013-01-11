@@ -204,7 +204,7 @@ function ad_block_block_view($delta = ''){
 			
 			$view_mode = $block->view_mode ? $block->view_mode : 'ad';
 			
-			$aids = ad_block_select($block);
+			$aids = ad_select($block);
 			$ads = ad_load_multiple($aids);
 			foreach ($ads as $ad) {
 				$ad->ad_block = $delta;
@@ -444,36 +444,36 @@ function ad_block_block_save($delta = '', $edit = array()) {
 }
 
 
-
-function ad_block_select( stdClass $block){
-	
-	
-	$q = db_select('ad' , 'a');
-	$q->addTag('ad_ids');
-	$q->addMetaData('block', $block);
-	
-	$q->fields('a' , array('aid'));
-	$q->condition('status' , 1);
-	
-	
-	
-	if( $block->types ){
-		$types = explode(',' , $block->types );
-		$q->condition('type' , $types , 'IN');
-	}
-	
-	$q->addExpression('rand() * weight' , 'score');
-	$q->orderBy('score');
-	
-	//$q->orderRandom();
-	//$q->range(0,$block->quantity);
-	
-	$q->range(0,$block->quantity);
-	
-	$aids = $q->execute()->fetchCol();
-	
-	return $aids;
-}
+// 
+// function ad_block_select( stdClass $block){
+// 	
+// 	
+	// $q = db_select('ad' , 'a');
+	// $q->addTag('ad_ids');
+	// $q->addMetaData('block', $block);
+// 	
+	// $q->fields('a' , array('aid'));
+	// $q->condition('status' , 1);
+// 	
+// 	
+// 	
+	// if( $block->types ){
+		// $types = explode(',' , $block->types );
+		// $q->condition('type' , $types , 'IN');
+	// }
+// 	
+	// //$q->addExpression('rand() * weight' , 'score');
+	// //$q->orderBy('score');
+// 	
+	// //$q->orderRandom();
+// 	
+// 	
+	// $q->range(0,$block->quantity);
+// 	
+	// $aids = $q->execute()->fetchCol();
+// 	
+	// return $aids;
+// }
 
 
 

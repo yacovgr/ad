@@ -60,13 +60,13 @@ function ad_schema() {
         // 'not null' => TRUE,
         // 'default' => '',
       // ),
-      'weight' => array(
-       	  'type' => 'numeric',
-          'precision' => 10,
-          'scale' => 2,
-          'not null' => FALSE,
-          'description' => 'The weight of the ad.',
-       ),
+      // 'weight' => array(
+       	  // 'type' => 'numeric',
+          // 'precision' => 10,
+          // 'scale' => 2,
+          // 'not null' => FALSE,
+          // 'description' => 'The weight of the ad.',
+       // ),
        // 'size' => array(
 	   		// 'type' => 'varchar',
        		 // 'length' => 255,

@@ -1,1 +1,18 @@
 <?php
+
+
+function ad_weight_install(){
+	
+	$spec = array(
+   	  'type' => 'numeric',
+      'precision' => 10,
+      'scale' => 2,
+      'not null' => FALSE,
+      'description' => 'The weight of the ad.',
+      'default' => 1,
+   );
+       
+	db_add_field('ad', 'weight', $spec);   
+	
+}
+

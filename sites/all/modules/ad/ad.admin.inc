@@ -203,13 +203,13 @@ function ad_form($form, &$form_state, $ad) {
   );
 */
 
-  $form['weight'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Weight'),
-    '#default_value' => $ad->weight,
-    '#size' => 5,
-    '#required' => true,
-  );
+  // $form['weight'] = array(
+    // '#type' => 'textfield',
+    // '#title' => t('Weight'),
+    // '#default_value' => $ad->weight,
+    // '#size' => 5,
+    // '#required' => true,
+  // );
 
 /*
   $form['size'] = array(
