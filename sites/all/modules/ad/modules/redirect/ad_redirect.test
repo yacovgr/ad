@@ -149,10 +149,10 @@ class AdRedirectRedirectingTestCase extends AdRedirectTestCase {
 		$this->assertLinkByHref('ad-redirect/' . $ad1->aid , 0, 'A link to ad 1 appears on the page');
 		$this->drupalGet('ad-redirect/' . $ad1->aid);
 		
-		//global $base_url;
+
 		$url = url('ad/' . $ad1->aid , array('absolute' => true ) );
 		$this->assertEqual($this->getUrl() ,$url , 'url resolves to ' . $this->getUrl());
-		//$this->assertResponse(301, 'Page was redirected');
+
 		
 		$node = $this->drupalCreateNode(array('title' => 'Landing Page'));
 		$ad1->url = 'node/' . $node->nid;
@@ -163,7 +163,7 @@ class AdRedirectRedirectingTestCase extends AdRedirectTestCase {
 		$this->assertLinkByHref('ad-redirect/' . $ad1->aid , 0, 'A link to ad 1 appears on the page');
 		$this->drupalGet('ad-redirect/' . $ad1->aid);
 		
-		//global $base_url;
+
 		$url = url('node/' . $node->nid , array('absolute' => true ) );
 		$this->assertEqual($this->getUrl() ,$url , 'url resolves to ' . $this->getUrl());
 		

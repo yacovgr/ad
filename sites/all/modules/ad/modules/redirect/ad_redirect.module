@@ -61,22 +61,18 @@ function ad_redirect_menu(){
 function ad_redirect_redirect($ad){
 	
 	
-	//$aid = $_GET['aid'];
-	
-	
-	// here we log the click and then redirect to whereever
-	//$ad = ad_load($aid);
-	
-	//ad_clicked($ad);
 	$url = $ad->url;
 	$goto = $url;
 	
 	if( $url == '' ||  $url == '<self>')
 		$goto = 'ad/' . $ad->aid;
 	
+	// foreach (module_implements('ad_click') as $module ) {
+		// // fire the hook
+		// $f = $module . '_ad_click';
+		// $f($ad , 'here some parameters like from which block , user , time , batch if any etc');
+	// }
 	
-	//tr( $ad );
-	//die();
 	drupal_goto($goto);
 }
 
