@@ -1,0 +1,16 @@
+<?php
+
+
+function ad_redirect_install(){
+	
+	$spec = array(
+   	    'description' => 'The url of the ad.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '<self>',
+   );
+       
+	db_add_field('ad', 'url', $spec);   
+	
+}

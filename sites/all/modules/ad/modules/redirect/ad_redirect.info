@@ -1,0 +1,11 @@
+name = Ads Redirect
+description = redirect after clicking an ad to landing page
+package = Ads
+
+core = 7.x
+
+dependencies[] = ad
+
+
+files[] = ad_redirect.test
+

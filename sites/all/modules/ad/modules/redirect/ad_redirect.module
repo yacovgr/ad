@@ -1,0 +1,96 @@
+<?php
+
+// here i need to change ad form to show url textfield
+// change the ad link to point to the redirect page
+// make the redirect function
+
+// shema_alter
+
+
+
+function ad_redirect_schema_alter(&$schema) {
+	
+  if (isset($schema['ad'])) {
+    $schema['ad']['fields']['url'] = array(
+      	'description' => 'The url of the ad.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '<self>',
+    );
+  }
+}
+
+
+
+function ad_redirect_form_alter(&$form, &$form_state, $form_id){
+	
+	if( $form_id == 'ad_form'){
+		
+	  $ad =  $form_state['ad'];
+		
+		$form['url'] = array(
+		    '#type' => 'textfield',
+		    '#title' => t('Url'),
+		    '#default_value' => $ad->url,
+		    '#required' => true,
+		    '#description' => t('the url to redirect when clicking the ad. put <self> to redirect to ad entity view' ),
+		  );
+  
+	}
+}
+
+
+function ad_redirect_menu(){
+	
+  $items['ad-redirect/%ad'] = array(
+    'title' => 'Ads Redirect',
+    'page callback' => 'ad_redirect_redirect',
+    'page arguments' => array(1),
+    'access arguments' => array('access content'),  // maybe here acccess ads
+    'type' => MENU_CALLBACK,
+    //'weight' => 2,
+    //'delivery callback' => 'ad_iframe_delivery_callback', 
+    //'delivery callback' => 'ajax_deliver', 
+    //'file' => 'ad.admin.inc',
+  );
+  
+  return $items;
+}
+
+function ad_redirect_redirect($ad){
+	
+	
+	//$aid = $_GET['aid'];
+	
+	
+	// here we log the click and then redirect to whereever
+	//$ad = ad_load($aid);
+	
+	//ad_clicked($ad);
+	$url = $ad->url;
+	$goto = $url;
+	
+	if( $url == '' ||  $url == '<self>')
+		$goto = 'ad/' . $ad->aid;
+	
+	
+	//tr( $ad );
+	//die();
+	drupal_goto($goto);
+}
+
+
+function ad_redirect_preprocess_entity(&$variables){
+	
+	if( $variables['entity_type'] != 'ad')
+		return;
+	
+	$ad = $variables['ad'];
+	
+	//$uri = entity_uri('ad', $ad);
+	
+	$variables['ad_uri']['path'] 	= 'ad-redirect/' . $ad->aid; // $uri['path'];
+	//$variables['ad_uri']['options'] = array(); // $uri['options'];
+	
+}

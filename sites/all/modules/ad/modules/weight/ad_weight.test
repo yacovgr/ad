@@ -126,7 +126,7 @@ class AdWeightProbabilityOrderTestCase extends AdWeightTestCase {
 		
 		$probability = array();
 		for( $x = 0 ; $x < 50 ; $x++ ){
-			$aids = ad_block_select($block);
+			$aids = ad_select($block);
 			foreach ($aids as $aid ) {
 				if( isset($probability[$aid])){
 					$probability[$aid]++;
@@ -142,23 +142,6 @@ class AdWeightProbabilityOrderTestCase extends AdWeightTestCase {
 		//$this->assertFalse(array_key_exists($ad3->aid, $probability));
 		
 		
-// 		
-		// $this->assertEqual(count($aids) , 4 , 'ad count resolves to 3');
-// 		
-		// $this->drupalGet('');
-		// $this->assertText($ad1->title, t('Ad Present On Page.'));
-		// $this->assertText($ad2->title, t('Ad Present On Page.'));
-		// $this->assertText($ad3->title, t('Ad Present On Page.'));
-		// $this->assertText($ad4->title, t('Ad Present On Page.'));
-// 		
-// 		
-		// $this->assertNoText($ad5->title, t('Ad Not Present On Page.'));
-		// $this->assertNoText($ad6->title, t('Ad Not Present On Page.'));
-		// $this->assertNoText($ad7->title, t('Ad Not Present On Page.'));
-		// $this->assertNoText($ad8->title, t('Ad Not Present On Page.'));
-// 		
-// 		
-// 		
   }
   
   

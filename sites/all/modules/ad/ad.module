@@ -79,31 +79,15 @@ function ad( &$params , $response ){
 	
 }
 
-function _ad_ad_selection_alter($ads , $params , $response ){
 
-	//tr($params);
-	
-	// $group = $params['group'];
-	// foreach ($ads as $ad) {
-		// $ad->block_id = $group;
-	// }
-// 	
-	// $ad_nids = &drupal_static('ad_nids' , array());
-	// foreach ($ads as $ad ) {
-		// if( $ad->nid)
-			// $ad_nids[$delta][] = $ad->nid;
-	// }
-	
-}
-
-
-function ad_ad_selection_info(){
-	return array(
-		'ad' => array(
-			'title' => 'ad',
-		) 
-	);
-}
+// 
+// function ad_ad_selection_info(){
+	// return array(
+		// 'ad' => array(
+			// 'title' => 'ad',
+		// ) 
+	// );
+// }
 /**
  * Implements hook_entity_info().
  */
@@ -326,19 +310,19 @@ function ad_menu() {
   );
   
 	
-	
-	
-  $items['ad/redirect'] = array(
-    'title' => 'Ads JQuery Callback',
-    'page callback' => 'ad_redirect',
-    //'page arguments' => array('ads_config_form'),
-    'access arguments' => array('access content'),  // maybe here acccess ads
-    'type' => MENU_CALLBACK,
-    //'weight' => 2,
-    //'delivery callback' => 'ad_iframe_delivery_callback', 
-    //'delivery callback' => 'ajax_deliver', 
-    //'file' => 'ad.admin.inc',
-  );
+// 	
+// 	
+  // $items['ad/redirect'] = array(
+    // 'title' => 'Ads JQuery Callback',
+    // 'page callback' => 'ad_redirect',
+    // //'page arguments' => array('ads_config_form'),
+    // 'access arguments' => array('access content'),  // maybe here acccess ads
+    // 'type' => MENU_CALLBACK,
+    // //'weight' => 2,
+    // //'delivery callback' => 'ad_iframe_delivery_callback', 
+    // //'delivery callback' => 'ajax_deliver', 
+    // //'file' => 'ad.admin.inc',
+  // );
   //delivery callback
 	
 	
@@ -543,12 +527,12 @@ function ad_views_api() {
 }
 
 
-
-function ad_get_block($delta){
-	// this should be loaded once
-	$custom_block = db_query("SELECT * FROM ad_block WHERE delta = :delta", array(':delta' => $delta))->fetchObject(); //->fetchAssoc();
-	return $custom_block;
-}
+// 
+// function ad_get_block($delta){
+	// // this should be loaded once
+	// $custom_block = db_query("SELECT * FROM ad_block WHERE delta = :delta", array(':delta' => $delta))->fetchObject(); //->fetchAssoc();
+	// return $custom_block;
+// }
 
 // 
 // function ad_block_info(){
@@ -941,28 +925,28 @@ function ad_theme(){
 
   return $theme;
 }
-
-function ad_redirect(){
-	
-	
-	$aid = $_GET['aid'];
-	
-	
-	// here we log the click and then redirect to whereever
-	$ad = ad_load($aid);
-	
-	//ad_clicked($ad);
-	$url = $ad->url;
-	$goto = $url;
-	
-	if( $url == '' ||  $url == '<self>')
-		$goto = 'ad/' . $aid;
-	
-	
-	//tr( $ad );
-	//die();
-	drupal_goto($goto);
-}
+// 
+// function ad_redirect(){
+// 	
+// 	
+	// $aid = $_GET['aid'];
+// 	
+// 	
+	// // here we log the click and then redirect to whereever
+	// $ad = ad_load($aid);
+// 	
+	// //ad_clicked($ad);
+	// $url = $ad->url;
+	// $goto = $url;
+// 	
+	// if( $url == '' ||  $url == '<self>')
+		// $goto = 'ad/' . $aid;
+// 	
+// 	
+	// //tr( $ad );
+	// //die();
+	// drupal_goto($goto);
+// }
 
 
 function ad_preprocess_entity(&$variables){

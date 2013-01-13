@@ -1,0 +1,176 @@
+<?php
+
+
+/**
+* Administration tests for my module.
+*/
+abstract class AdRedirectTestCase extends DrupalWebTestCase {
+ 
+	
+  public function createAdType(){
+  	
+	$def = array(
+		'type' => strtolower(  $this->randomName(4) ) , 
+		'label' => $this->randomString(6),
+		'description' => '',
+	);
+	
+	$type = (object) $def;
+	ad_type_save($type);
+		
+	return $type;
+  }
+  
+  
+  public function createAd($type = null , $settings = array() ){
+  	
+		if( ! $type ){
+			$ad_type = $this->createAdType();
+			$type = $ad_type->type;
+		}
+		
+		$settings += array(
+    		'title' => $this->randomName(6),
+      		//'url' => '',
+      		//'weight'	=> 0,
+      		//'size'	=> '',
+      		'created' => REQUEST_TIME,
+      		'changed' => REQUEST_TIME,
+      		'uid' => 1, // $user->uid,
+      		'status' => 1,
+      		'type' => $type
+		);
+		
+		$ad = (object) $settings;
+		ad_save($ad);
+		
+		return $ad;
+		
+  }
+  
+}
+
+
+class AdRedirectFormTestCase extends AdRedirectTestCase {
+ 
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Redirect Form Element'),
+      'description' => t('Check that url field functions.'),
+      'group' => t('Ad Redirect'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad_redirect');
+  }
+  
+  public function testRedirect() {
+  				
+		$this->assertTrue(db_field_exists('ad' , 'url') , 'field url in db ad exists');
+		
+		
+		$type1 = $this->createAdType();
+		$ad1 = $this->createAd($type1->type);
+		
+		$this->assertEqual($ad1->url , '<self>'  , 'ad url field set correctly');
+		
+		$ad2 = $this->createAd($type1->type,array('url' => 'http://www.google.com'));
+		$this->assertEqual($ad2->url , 'http://www.google.com'  , 'ad url field set correctly');
+		
+		$user = $this->drupalCreateUser(array('administer ad entities' , 'administer blocks' ));
+		$this->drupalLogin($user);
+		
+		
+		$this->drupalGet('ad/' . $ad1->aid . '/edit');
+		
+		$this->assertFieldById('edit-url', '', 'The edit-url exists on the page');
+		$this->assertFieldById('edit-url', '<self>', 'The edit-url field is set correctly');
+		
+		$edit = array('url' => 'http://www.hapisga.co.il');
+		$this->drupalPost('ad/' . $ad1->aid . '/edit', $edit, t('Save Ad'));
+    	$this->assertRaw(t('Ad %title saved.', array('%title' => $ad1->title)));
+		
+		$ad = ad_load($ad1->aid);
+		$this->assertEqual($ad->url , 'http://www.hapisga.co.il'  , 'ad url field set correctly');
+		
+		
+  }
+  
+  
+}
+
+
+
+
+class AdRedirectRedirectingTestCase extends AdRedirectTestCase {
+ 
+  public static function getInfo() {
+    return array (
+      'name' => t('Ad Redirect work'),
+      'description' => t('Check that ad ridirect work - it s redirecting.'),
+      'group' => t('Ad Redirect'),
+    );
+  }
+  public function setUp() {
+    // Enable any module that you will need in your tests.
+    parent::setUp('ad_block' , 'ad_redirect');
+  }
+  
+  public function testRedirect() {
+  				
+		
+		$type1 = $this->createAdType();
+		$ad1 = $this->createAd($type1->type);
+		
+		$this->assertEqual($ad1->url , '<self>'  , 'ad url field set correctly');
+		
+		$user = $this->drupalCreateUser(array('administer ad entities' , 'administer blocks' , 'administer ad blocks'));
+		$this->drupalLogin($user);
+		
+		
+		$this->drupalPost('admin/structure/block/add-ad-block', array(
+    		'title' => $this->randomName(8),
+    		'ad_info' => $this->randomString(),
+    		'ad_quantity' => 3,
+		), t('Save block'));
+    	$this->assertText(t('The block has been created.'), t('Block configuration set.'));
+
+		
+    	// Set the block to a region to confirm block is available.
+    	$edit = array();
+    	$edit['blocks[ad_block_1][region]'] = 'footer';
+    	$this->drupalPost('admin/structure/block', $edit, t('Save blocks'));
+   		$this->assertText(t('The block settings have been updated.'), t('Block successfully move to footer region.'));
+		
+		
+		$this->drupalGet('');
+		
+		$this->assertLinkByHref('ad-redirect/' . $ad1->aid , 0, 'A link to ad 1 appears on the page');
+		$this->drupalGet('ad-redirect/' . $ad1->aid);
+		
+		//global $base_url;
+		$url = url('ad/' . $ad1->aid , array('absolute' => true ) );
+		$this->assertEqual($this->getUrl() ,$url , 'url resolves to ' . $this->getUrl());
+		//$this->assertResponse(301, 'Page was redirected');
+		
+		$node = $this->drupalCreateNode(array('title' => 'Landing Page'));
+		$ad1->url = 'node/' . $node->nid;
+		ad_save($ad1);
+		
+		$this->drupalGet('');
+		
+		$this->assertLinkByHref('ad-redirect/' . $ad1->aid , 0, 'A link to ad 1 appears on the page');
+		$this->drupalGet('ad-redirect/' . $ad1->aid);
+		
+		//global $base_url;
+		$url = url('node/' . $node->nid , array('absolute' => true ) );
+		$this->assertEqual($this->getUrl() ,$url , 'url resolves to ' . $this->getUrl());
+		
+  }
+  
+  
+}
+
+
+
